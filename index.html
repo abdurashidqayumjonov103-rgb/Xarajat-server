@@ -1,0 +1,1682 @@
+ <!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#07130F">
+<meta name="api-base-url" content="https://xarajat-server.onrender.com">
+<title>XARAJAT AI</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script>
+if (window.Telegram && window.Telegram.WebApp) {
+  window.Telegram.WebApp.ready();
+  window.Telegram.WebApp.expand();
+}
+</script>
+<style>
+/* Netlify belgisini yashirish */
+#netlify-badge, .netlify-badge, iframe[src*="netlify"], a[href*="netlify"] { display: none !important; visibility: hidden !important; opacity: 0 !important; width: 0 !important; height: 0 !important; }
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+:root {
+  --bg: #F8FAFC; --surface: #FFFFFF; --surface-2: #F1F5F9; --surface-3: #E2E8F0;
+  --text: #0F172A; --text-2: #64748B; --text-3: #94A3B8;
+  --border: #E2E8F0; --border-2: #CBD5E1;
+  --primary: #4F46E5; --primary-hover: #4338CA; --primary-soft: #EEF2FF;
+  --success: #059669; --success-soft: #ECFDF5;
+  --danger: #DC2626; --danger-soft: #FEF2F2;
+  --warning: #D97706; --warning-soft: #FFFBEB;
+  --shadow-sm: 0 1px 2px rgba(15,23,42,0.04);
+  --shadow-md: 0 2px 8px rgba(15,23,42,0.06);
+  --shadow-lg: 0 8px 24px rgba(15,23,42,0.08);
+  --radius: 14px; --radius-lg: 18px; --radius-xl: 24px;
+}
+body.dark {
+  --bg: #0B1220; --surface: #111827; --surface-2: #1F2937; --surface-3: #374151;
+  --text: #F9FAFB; --text-2: #9CA3AF; --text-3: #6B7280;
+  --border: #1F2937; --border-2: #374151;
+  --primary: #6366F1; --primary-hover: #818CF8; --primary-soft: rgba(99,102,241,0.15);
+  --success: #10B981; --success-soft: rgba(16,185,129,0.12);
+  --danger: #EF4444; --danger-soft: rgba(239,68,68,0.12);
+  --warning: #F59E0B; --warning-soft: rgba(245,158,11,0.12);
+}
+html, body { height: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+  background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: calc(88px + env(safe-area-inset-bottom));
+  transition: background 200ms, color 200ms;
+}
+.num { font-variant-numeric: tabular-nums; }
+.container { max-width: 520px; margin: 0 auto; padding: 0 16px; }
+.header { display: flex; align-items: center; justify-content: space-between; padding: 16px 0 20px; gap: 12px; }
+.greeting { flex: 1; min-width: 0; }
+.greeting-hello { font-size: 13px; color: var(--text-2); font-weight: 500; }
+.greeting-name { font-size: 19px; font-weight: 700; letter-spacing: -0.3px; margin-top: 1px; }
+.header-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.icon-btn {
+  width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 150ms; box-shadow: var(--shadow-sm);
+}
+.icon-btn:active { transform: scale(0.94); }
+.icon-btn svg { width: 20px; height: 20px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.hero {
+  background: linear-gradient(145deg, #4F46E5 0%, #6D28D9 50%, #7C3AED 100%);
+  border-radius: var(--radius-xl); padding: 24px; position: relative;
+  overflow: hidden; margin-bottom: 16px; box-shadow: 0 20px 40px -12px rgba(79,70,229,0.4);
+}
+.hero::before {
+  content: ""; position: absolute; top: -100px; right: -80px; width: 280px; height: 280px;
+  background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 60%);
+  pointer-events: none;
+}
+.hero-label { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.7); letter-spacing: 0.5px; text-transform: uppercase; }
+.hero-amount { font-size: 34px; font-weight: 800; letter-spacing: -1px; color: #fff; margin-top: 6px; position: relative; z-index: 1; line-height: 1.15; }
+.hero-amount .currency { font-size: 18px; font-weight: 700; opacity: 0.75; margin-left: 4px; }
+.hero-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.15); position: relative; z-index: 1; }
+.hero-stat-label { display: flex; align-items: center; gap: 6px; font-size: 11px; color: rgba(255,255,255,0.7); font-weight: 500; text-transform: uppercase; }
+.hero-stat-label .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.hero-stat-value { font-size: 16px; font-weight: 700; color: #fff; margin-top: 4px; }
+.section { margin-bottom: 16px; }
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding: 0 4px; }
+.section-title { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; }
+.section-action { font-size: 13px; font-weight: 600; color: var(--primary); background: transparent; border: none; cursor: pointer; padding: 4px 8px; border-radius: 8px; font-family: inherit; }
+.quick-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 20px; }
+.quick-btn { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 6px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; transition: all 150ms; box-shadow: var(--shadow-sm); color: var(--text); font-family: inherit; }
+.quick-btn:active { transform: scale(0.94); }
+.quick-btn-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+.quick-btn-icon svg { width: 20px; height: 20px; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+.quick-btn-label { font-size: 11px; font-weight: 600; color: var(--text-2); }
+.card { background: var(--surface); border-radius: var(--radius-lg); padding: 18px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); margin-bottom: 12px; }
+.form-group { margin-bottom: 14px; }
+.form-label { display: block; font-size: 12px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; }
+.input, .select { width: 100%; padding: 14px 16px; background: var(--surface-2); border: 1.5px solid transparent; border-radius: var(--radius); font-size: 15px; font-weight: 500; color: var(--text); font-family: inherit; transition: all 150ms; }
+.input:focus, .select:focus { outline: none; border-color: var(--primary); background: var(--surface); }
+.btn { width: 100%; padding: 15px 20px; background: var(--primary); color: #fff; border: none; border-radius: var(--radius); font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer; transition: all 150ms; box-shadow: 0 8px 24px rgba(79,70,229,0.25); display: flex; align-items: center; justify-content: center; gap: 8px; }
+.btn:active { transform: scale(0.97); background: var(--primary-hover); }
+.btn-success { background: var(--success); box-shadow: 0 8px 24px rgba(5,150,105,0.25); }
+.btn-ghost { background: var(--surface-2); color: var(--text); box-shadow: none; border: 1.5px solid var(--border); }
+.btn svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2.5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.tx-list { display: flex; flex-direction: column; gap: 6px; }
+.tx-row { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); transition: all 150ms; }
+.tx-icon { width: 40px; height: 40px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 20px; background: var(--surface-2); flex-shrink: 0; }
+.tx-icon.income { background: var(--success-soft); }
+.tx-icon.expense { background: var(--danger-soft); }
+.tx-info { flex: 1; min-width: 0; }
+.tx-name { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tx-meta { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+.tx-amount { font-size: 14px; font-weight: 700; white-space: nowrap; }
+.tx-amount.income { color: var(--success); }
+.tx-delete { width: 32px; height: 32px; border-radius: 8px; border: none; background: transparent; color: var(--text-3); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.empty { text-align: center; padding: 40px 20px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.empty-icon { width: 56px; height: 56px; border-radius: 16px; background: var(--surface-2); display: flex; align-items: center; justify-content: center; font-size: 26px; margin-bottom: 4px; }
+.empty-title { font-size: 14px; font-weight: 600; }
+.empty-desc { font-size: 13px; color: var(--text-2); }
+.filter-bar { display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; padding: 2px 0; }
+.pill { padding: 8px 14px; border-radius: 100px; border: 1.5px solid var(--border); background: var(--surface); color: var(--text-2); font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.pill.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255,255,255,0.88); backdrop-filter: blur(24px); border-top: 1px solid var(--border); z-index: 50; padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); max-width: 520px; margin: 0 auto; }
+body.dark .bottom-nav { background: rgba(17,24,39,0.88); }
+.nav-list { display: flex; gap: 2px; }
+.nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 2px; background: transparent; border: none; color: var(--text-3); font-size: 10px; font-weight: 600; cursor: pointer; border-radius: 10px; }
+.nav-btn svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.nav-btn.active { color: var(--primary); }
+.toast { position: fixed; bottom: calc(100px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%) translateY(16px); padding: 12px 22px; background: var(--text); color: var(--surface); border-radius: 100px; font-size: 14px; font-weight: 600; opacity: 0; pointer-events: none; transition: all 250ms; z-index: 200; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.success { background: var(--success); color: #fff; }
+.toast.error { background: var(--danger); color: #fff; }
+.hidden { display: none !important; }
+.settings-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.settings-row:last-child { border-bottom: none; }
+.nav-btn.pro-nav { color: #B98A32; }
+.nav-btn.pro-nav.active { color: #D4AF5A; }
+.pro-hero { position: relative; overflow: hidden; padding: 24px; border-radius: 24px; color: #F7E7B2; background: radial-gradient(circle at 90% 5%, rgba(212,175,90,.25), transparent 34%), linear-gradient(145deg,#111 0%,#1D1A12 55%,#090909 100%); border: 1px solid rgba(212,175,90,.42); box-shadow: 0 18px 42px rgba(0,0,0,.2); }
+.pro-kicker { color: #D4AF5A; font-size: 11px; font-weight: 800; letter-spacing: 1.6px; text-transform: uppercase; }
+.pro-hero h1 { margin: 8px 0; font-size: 28px; line-height: 1.15; }
+.pro-hero p, .pro-muted { color: #C8C0AA; font-size: 13px; }
+.pro-status { margin-top: 14px; padding: 14px 16px; border-radius: 14px; background: #171717; color: #F7E7B2; border: 1px solid rgba(212,175,90,.32); }
+.pro-status strong { color: #B98A32; }
+.pro-plans { display: grid; gap: 10px; }
+.pro-plan { padding: 16px; border: 1px solid rgba(185,138,50,.35); border-radius: 16px; background: var(--surface); }
+.pro-plan-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.pro-plan-title { font-weight: 800; }
+.pro-plan-price { color: #B98A32; font-weight: 800; white-space: nowrap; }
+.pro-plan button { margin-top: 12px; background: linear-gradient(135deg,#D8B65D,#A97922); color: #15120B; box-shadow: none; }
+.pro-benefits { display: grid; gap: 10px; }
+.pro-benefit { display: flex; gap: 9px; color: var(--text-2); font-size: 13px; }
+.pro-provider { display: flex; gap: 8px; margin: 12px 0; }
+.pro-provider .pill.active { background: #171717; color: #E5C46A; border-color: #B98A32; }
+.admin-panel { margin-top: 18px; border-color: rgba(185,138,50,.5); }
+.admin-panel input, .admin-panel select { margin: 5px 0 10px; }
+.admin-list { display: grid; gap: 8px; margin-top: 10px; }
+.admin-list-item { padding: 10px; border-radius: 10px; background: var(--surface-2); font-size: 12px; overflow-wrap: anywhere; }
+@media (max-width: 380px) {
+  .nav-btn { font-size: 9px; }
+  .nav-btn svg { width: 20px; height: 20px; }
+  .pro-hero { padding: 20px; }
+}
+
+:root, body.dark {
+  color-scheme: dark;
+  --bg: #080F19; --surface: rgba(16, 28, 42, .94); --surface-2: #132337; --surface-3: #24364A;
+  --text: #F1F7F3; --text-2: #A2B2C1; --text-3: #718398;
+  --border: rgba(159, 182, 203, .14); --border-2: rgba(159, 182, 203, .24);
+  --primary: #2DD28D; --primary-hover: #20B879; --primary-soft: rgba(45, 210, 141, .12);
+  --success: #38D99A; --success-soft: rgba(56, 217, 154, .12);
+  --danger: #FF7181; --danger-soft: rgba(255, 113, 129, .12);
+  --warning: #E5BE66; --warning-soft: rgba(229, 190, 102, .12);
+  --shadow-sm: 0 5px 16px rgba(0, 0, 0, .12);
+  --shadow-md: 0 12px 30px rgba(0, 0, 0, .18);
+  --shadow-lg: 0 24px 60px rgba(0, 0, 0, .28);
+}
+body:not(.dark) {
+  color-scheme: light;
+  --bg: #F3F8F5; --surface: #FFFFFF; --surface-2: #ECF4EF; --surface-3: #DBE9E0;
+  --text: #10251B; --text-2: #5B7466; --text-3: #81988A;
+  --border: #DCE9E0; --border-2: #C6D9CC;
+  --primary: #0B9860; --primary-hover: #087A4C; --primary-soft: #E3F7ED;
+  --success: #0C9B65; --success-soft: #E3F7ED;
+  --danger: #D94B60; --danger-soft: #FCEAEC;
+  --warning: #A8791E; --warning-soft: #FBF3DF;
+}
+html { background: var(--bg); }
+body { background: radial-gradient(ellipse at 50% -18%, rgba(32, 132, 87, .17), transparent 46%), var(--bg); }
+body.dark .bottom-nav { background: rgba(7, 19, 15, .84); }
+.container { max-width: 1120px; }
+.hero { background: radial-gradient(circle at 85% 4%, rgba(73, 226, 151, .22), transparent 31%), linear-gradient(140deg, #123B2B, #09231A 60%, #08170F); border: 1px solid rgba(95, 209, 147, .22); box-shadow: 0 22px 54px rgba(3, 24, 14, .38); }
+.card, .tx-row, .quick-btn { background: linear-gradient(145deg, rgba(19, 34, 51, .96), rgba(12, 23, 36, .96)); border-color: var(--border); box-shadow: var(--shadow-sm); backdrop-filter: blur(18px); }
+body:not(.dark) .card, body:not(.dark) .tx-row, body:not(.dark) .quick-btn { background: var(--surface); }
+.input, .select { color: var(--text); background: var(--surface-2); border-color: var(--border); }
+.btn { color: #042017; background: linear-gradient(135deg, #48E2A0, #17B777); box-shadow: 0 9px 24px rgba(21, 166, 105, .2); }
+.btn:active { background: var(--primary-hover); }
+.btn-ghost { color: var(--text); background: var(--surface-2); border-color: var(--border); box-shadow: none; }
+.section-action, .nav-btn.active { color: var(--primary); }
+.bottom-nav { width: min(100%, 1120px); max-width: 1120px; left: 50%; right: auto; margin: 0; transform: translateX(-50%); background: rgba(7, 19, 15, .84); border-color: var(--border); }
+.nav-list { gap: 5px; }
+.nav-btn { min-width: 0; font-size: 11px; }
+.nav-btn.pro-nav, .nav-btn.pro-nav.active { color: #E6C16B; }
+.pro-hero { min-height: 210px; display: flex; flex-direction: column; justify-content: center; background: radial-gradient(circle at 88% 12%, rgba(71, 218, 145, .2), transparent 33%), linear-gradient(145deg,#12273A,#0A1825 68%,#09131F); border-color: rgba(96, 207, 142, .35); box-shadow: var(--shadow-lg); }
+.pro-kicker { color: #69E2A7; }
+.pro-status { color: #E9F7EE; background: linear-gradient(130deg, #132338, #0D1928); border-color: rgba(72, 206, 136, .25); }
+.pro-status strong, .pro-plan-price { color: #E5C36F; }
+.pro-plan { background: linear-gradient(145deg, #14263A, #0E1B2A); border-color: rgba(72, 206, 136, .2); }
+.pro-plan button { color: #042017; background: linear-gradient(135deg, #56E5A4, #20B879); }
+.pro-provider .pill.active { background: #10271C; color: #70E2A7; border-color: #31B67B; }
+.page:not(.hidden) { animation: page-in .22s ease-out; }
+@keyframes page-in { from { opacity: .65; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+.pill { color: var(--text-2); background: var(--surface-2); border-color: var(--border); }
+.pill.active { color: #042017; background: var(--primary); border-color: var(--primary); }
+.dashboard-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.dashboard-card { min-width: 0; }
+.dashboard-wide { grid-column: 1 / -1; }
+.mini-chart { display: flex; align-items: end; gap: 8px; height: 100px; padding-top: 12px; }
+.mini-chart-column { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: end; gap: 6px; height: 100%; }
+.mini-chart-bars { display: flex; align-items: end; justify-content: center; gap: 3px; width: 100%; flex: 1; }
+.mini-chart-bar { width: min(18px, 42%); min-height: 3px; border-radius: 5px 5px 2px 2px; background: linear-gradient(180deg,#52E0A1,#188658); }
+.mini-chart-bar.expense { background: linear-gradient(180deg,#E9C36E,#A67B2D); }
+.mini-chart-label { font-size: 10px; color: var(--text-3); }
+.category-line { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; margin: 10px 0; font-size: 12px; }
+.category-track { grid-column: 1 / -1; height: 5px; border-radius: 8px; overflow: hidden; background: var(--surface-3); }
+.category-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #44D698, #148253); }
+.profile-card { display: flex; align-items: center; gap: 13px; }
+.profile-avatar { width: 46px; height: 46px; flex: 0 0 46px; display: grid; place-items: center; border-radius: 15px; color: #07301E; background: linear-gradient(135deg, #72E7AF, #20B879); font-weight: 800; }
+.admin-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.admin-kpi { min-width: 0; padding: 14px; border-radius: 15px; background: var(--surface-2); border: 1px solid var(--border); }
+.admin-kpi b { display: block; margin-top: 7px; font-size: 20px; }
+.admin-kpi span { color: var(--text-2); font-size: 11px; }
+.admin-toolbar, .payment-actions { display: flex; gap: 8px; }
+.admin-toolbar > *, .payment-actions > * { flex: 1; }
+.receipt-image { display: block; width: 100%; max-height: 300px; margin: 10px 0; object-fit: contain; border-radius: 10px; background: #050B08; }
+.settings-actions { display: grid; gap: 9px; }
+.status-chip { display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border-radius: 99px; background: var(--primary-soft); color: var(--primary); font-size: 11px; font-weight: 700; }
+.empty { color: var(--text-2); }
+@media (min-width: 760px) {
+  body { padding-bottom: 90px; }
+  #page-home .container { display: grid; grid-template-columns: 1.3fr 1fr; gap: 0 18px; }
+  #page-home .hero, #page-home .quick-grid, #page-home .dashboard-grid { grid-column: 1 / -1; }
+  #page-home .section:nth-of-type(3) { grid-column: 1; grid-row: 4 / span 2; align-self: start; }
+  #page-home .filter-bar { grid-column: 2; margin-top: 3px; }
+  #page-home .section:last-child { grid-column: 2; }
+  #page-home .quick-grid { gap: 12px; margin: 0 0 18px; }
+  #page-home .quick-btn { padding: 18px 10px; }
+  .pro-plans { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #page-admin .admin-layout { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 14px; }
+  #page-admin .admin-wide { grid-column: 1 / -1; }
+}
+@media (max-width: 560px) {
+  .dashboard-grid { gap: 8px; }
+  .card { padding: 15px; }
+  .admin-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-kpi b { font-size: 17px; }
+  .admin-toolbar, .payment-actions { flex-direction: column; }
+  .nav-btn { font-size: 9px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+</style>
+</head>
+<body class="dark">
+
+<div class="container">
+  <header class="header">
+    <div class="greeting">
+      <div class="greeting-hello" id="greeting">Xayrli kun</div>
+      <div class="greeting-name" id="header-app-name">XARAJAT AI</div>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" onclick="toggleTheme()" id="theme-btn">
+        <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </div>
+  </header>
+</div>
+<div class="container">
+  <div id="account-sync-status" class="card hidden" role="status" aria-live="polite"></div>
+</div>
+
+<!-- HOME -->
+<div id="page-home" class="page">
+  <div class="container">
+    <div class="hero" data-account-data>
+      <div class="hero-label">Joriy balans</div>
+      <div class="hero-amount"><span id="balans">0</span><span class="currency">so'm</span></div>
+      <div class="hero-stats">
+        <div><div class="hero-stat-label"><span class="dot" style="background:#34D399"></span>Kirim</div><div class="hero-stat-value" id="kirim-oy">+0</div></div>
+        <div><div class="hero-stat-label"><span class="dot" style="background:#FB7185"></span>Xarajat</div><div class="hero-stat-value" id="xarajat-oy">−0</div></div>
+      </div>
+    </div>
+    <section class="dashboard-grid" data-account-data>
+      <article class="card dashboard-card dashboard-wide">
+        <div class="section-header"><div><div class="section-title">Moliyaviy ko‘rinish</div><div class="tx-meta">Daromad va xarajatlar · oxirgi 6 oy</div></div><span class="status-chip">JONLI</span></div>
+        <div class="mini-chart" id="dashboard-trend" role="img" aria-label="Oxirgi olti oy kirim va xarajat grafigi"></div>
+        <div class="tx-meta" style="display:flex;gap:14px;margin-top:8px"><span><span style="color:var(--primary)">●</span> Kirim</span><span><span style="color:#E5C36F">●</span> Xarajat</span></div>
+      </article>
+      <article class="card dashboard-card">
+        <div class="section-title">Xarajat toifalari</div>
+        <div id="dashboard-categories" class="tx-meta" style="margin-top:12px"></div>
+      </article>
+      <article class="card dashboard-card">
+        <div class="section-title">Oylik sarhisob</div>
+        <div id="dashboard-monthly" style="margin-top:8px"></div>
+      </article>
+    </section>
+    <div class="quick-grid" data-account-data>
+      <button class="quick-btn" onclick="quickAdd('expense')"><div class="quick-btn-icon" style="background:var(--danger-soft);color:var(--danger)"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div><span class="quick-btn-label">Xarajat</span></button>
+      <button class="quick-btn" onclick="quickAdd('income')"><div class="quick-btn-icon" style="background:var(--success-soft);color:var(--success)"><svg viewBox="0 0 24 24"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></div><span class="quick-btn-label">Kirim</span></button>
+      <button class="quick-btn" onclick="sahifa('chek')"><div class="quick-btn-icon" style="background:var(--primary-soft);color:var(--primary)"><svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div><span class="quick-btn-label">Skaner</span></button>
+      <button class="quick-btn" onclick="sahifa('ai')"><div class="quick-btn-icon" style="background:var(--warning-soft);color:var(--warning)"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></div><span class="quick-btn-label">AI</span></button>
+    </div>
+    <div class="section" data-account-data>
+      <div class="section-header"><div class="section-title" id="form-title">Yangi xarajat</div><button class="section-action" onclick="toggleFormType()" id="form-type-btn">+ Kirim</button></div>
+      <div class="card">
+        <div class="form-group"><label class="form-label" id="label-nomi">Nomi</label><input id="nomi" class="input" placeholder="Masalan: Non" autocomplete="off" /></div>
+        <div class="form-group"><label class="form-label">Summa</label><input id="summa" class="input num" type="number" inputmode="numeric" placeholder="0" autocomplete="off" /></div>
+        <div class="form-group"><label class="form-label">Kategoriya</label><select id="kategoriya" class="select"></select></div>
+        <button class="btn" id="btn-save" onclick="qosh()">Saqlash</button>
+      </div>
+    </div>
+    <div class="filter-bar" data-account-data>
+      <button class="pill active" onclick="setFilter('all',this)">Hammasi</button>
+      <button class="pill" onclick="setFilter('expense',this)">Xarajat</button>
+      <button class="pill" onclick="setFilter('income',this)">Kirim</button>
+    </div>
+    <div class="section" data-account-data>
+      <div class="section-header"><div class="section-title">Operatsiyalar</div><span style="font-size:12px;color:var(--text-2)" id="ops-count"></span></div>
+      <div class="tx-list" id="royxat"></div>
+    </div>
+  </div>
+</div>
+<!-- CHEK -->
+<div id="page-chek" class="page hidden">
+  <div class="container" style="padding-top:16px">
+    <h1 style="font-size:22px;font-weight:800;margin-bottom:16px">Chek skaneri</h1>
+    
+    <!-- RASM YUKLASH QISMI -->
+    <input type="file" id="chek-rasm" accept="image/*" style="display:none" onchange="rasmTanlash(event)">
+    <label for="chek-rasm" style="display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px dashed var(--primary);border-radius:16px;padding:30px;margin-bottom:16px;background:var(--surface);cursor:pointer;">
+      <div style="font-size:40px;margin-bottom:10px;">📸</div>
+      <div style="font-weight:700;color:var(--primary);">Rasm yuklash / Kamera</div>
+      <div style="font-size:12px;color:var(--text-2);margin-top:5px;">Chek rasmini tanlang</div>
+    </label>
+
+    <!-- RASM KO'RINADIGAN JOY -->
+    <div id="rasm-preview" class="card hidden" style="text-align:center;padding:10px;">
+      <img id="rasm-img" style="width:100%;max-height:200px;object-fit:contain;border-radius:10px;">
+    </div>
+
+    <!-- MA'LUMOTLAR KIRITISH -->
+    <div class="card">
+      <div class="form-group"><label class="form-label">Do'kon nomi</label><input id="chek-nomi" class="input" placeholder="Masalan: Korzinka" /></div>
+      <div class="form-group"><label class="form-label">Summa</label><input id="chek-summa" class="input num" type="number" placeholder="0" /></div>
+      <div class="form-group"><label class="form-label">Kategoriya</label><select id="chek-kategoriya" class="select"></select></div>
+      <button class="btn btn-success" onclick="chekSaqlash()">✓ Saqlash</button>
+    </div>
+  </div>
+</div>
+
+<!-- BUDJET -->
+<div id="page-budjet" class="page hidden">
+  <div class="container" style="padding-top:16px">
+    <h1 style="font-size:22px;font-weight:800;margin-bottom:16px">Oylik budjet</h1>
+    <div class="card">
+      <div class="form-group"><label class="form-label" for="budget-limit">Oy uchun xarajat limiti · UZS</label><input id="budget-limit" class="input num" type="number" min="0" inputmode="numeric" placeholder="Masalan: 2 000 000"></div>
+      <button class="btn" onclick="saveBudget()">Budjetni saqlash</button>
+    </div>
+    <div class="card"><div class="section-title">Joriy oy holati</div><div id="budget-summary" style="margin-top:10px"></div></div>
+  </div>
+</div>
+ <!-- STATS -->
+<div id="page-stats" class="page hidden">
+  <div class="container" style="padding-top:16px">
+    <h1 style="font-size:22px;font-weight:800;margin-bottom:16px">Statistika</h1>
+    <div class="card" id="stats-basic" data-account-data></div>
+    <div class="card hidden" id="stats-pro" data-account-data>
+      <div class="section-header"><div class="section-title">Kengaytirilgan tahlil</div>
+        <select id="report-period" class="select" style="width:auto;padding:8px 10px" onchange="renderStats()">
+          <option value="1">Oylik</option><option value="12">Yillik</option>
+        </select>
+      </div>
+      <div id="report-summary"></div>
+      <div id="report-chart" class="admin-list"></div>
+      <div id="report-advice" class="pro-status"></div>
+      <button class="btn" style="margin-top:8px" onclick="generateAiAdvice()">AI tavsiyasi olish</button>
+      <p class="pro-muted" style="margin:8px 0 12px">Tugma bosilganda faqat tanlangan davrning jami moliyaviy raqamlari AI xizmatiga yuboriladi.</p>
+      <button class="btn" onclick="exportExcel()">Excel uchun CSV yuklab olish</button>
+      <button class="btn btn-ghost" style="margin-top:8px" onclick="exportPdf()">PDF sifatida chop etish</button>
+    </div>
+  </div>
+</div>
+
+<!-- AI -->
+<div id="page-ai" class="page hidden">
+  <div class="container" style="padding-top:16px">
+    <h1 style="font-size:22px;font-weight:800;margin-bottom:16px">AI Tahlil</h1>
+    <div id="ai-messages" style="min-height:200px;margin-bottom:16px;padding:14px;background:var(--surface);border-radius:14px;border:1px solid var(--border);">Salom! Men moliyaviy yordamchingizman.</div>
+    <div style="display:flex;gap:8px">
+      <input id="ai-input" class="input" placeholder="Savol yozing..." style="flex:1">
+      <button class="btn" id="ai-send-button" style="width:60px;padding:0" onclick="aiSend()">➤</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div id="page-settings" class="page hidden">
+  <div class="container" style="padding-top:16px">
+    <h1 style="font-size:22px;font-weight:800;margin-bottom:16px">Profil va sozlamalar</h1>
+    <div class="card profile-card" data-account-data>
+      <div class="profile-avatar" id="profile-avatar">XA</div>
+      <div style="min-width:0;flex:1"><div class="section-title" id="profile-name">Xarajat AI foydalanuvchisi</div><div class="tx-meta" id="profile-id">Telegram profilingiz</div></div>
+      <span class="status-chip" id="profile-plan">FREE</span>
+    </div>
+    <div class="card" data-account-data><div class="section-title" style="margin-bottom:8px">Umumiy hisob</div><div id="umumiy-stat"></div></div>
+    <div class="card settings-actions">
+      <div class="section-title">Ilova</div>
+      <button class="btn btn-ghost" onclick="toggleTheme()">◐ Mavzuni o‘zgartirish</button>
+      <button class="btn btn-ghost" onclick="manageCategories()">▦ Kategoriyalarni boshqarish</button>
+      <button class="btn btn-ghost" onclick="sahifa('notifications')">◉ Bildirishnomalar va to‘lovlar</button>
+      <button class="btn btn-ghost" onclick="sahifa('help')">? Yordam va qo‘llab-quvvatlash</button>
+      <button class="btn btn-ghost hidden" id="open-admin" onclick="sahifa('admin')">▤ Administrator paneli</button>
+    </div>
+  </div>
+</div>
+
+<div id="page-notifications" class="page hidden">
+  <div class="container" style="padding-top:16px">
+    <div class="section-header"><h1 style="font-size:22px;font-weight:800">Bildirishnomalar</h1><button class="section-action" onclick="loadNotifications()">Yangilash</button></div>
+    <div class="card"><div class="section-title">PRO to‘lovlari</div><div id="user-payments" class="admin-list"><div class="admin-list-item">Yuklanmoqda…</div></div></div>
+    <div class="card"><div class="section-title">Xarajat AI yangiliklari</div><div class="empty"><div class="empty-icon">✦</div><div class="empty-title">Siz hammasidan xabardorsiz</div><div class="empty-desc">Muhim obuna va to‘lov holatlari shu yerda ko‘rinadi.</div></div></div>
+  </div>
+</div>
+
+<div id="page-help" class="page hidden">
+  <div class="container" style="padding-top:16px">
+    <h1 style="font-size:22px;font-weight:800;margin-bottom:16px">Yordam markazi</h1>
+    <article class="card"><div class="section-title">Daromad yoki xarajatni qanday yozaman?</div><p class="tx-meta" style="margin-top:8px">Bosh sahifadagi tezkor amalni tanlang, nomi, summasi va toifani kiriting, keyin saqlang. Ma’lumotlar hisobingizga ulanib, hisob-kitoblarda ishlatiladi.</p></article>
+    <article class="card"><div class="section-title">PRO to‘lovi qanday tasdiqlanadi?</div><p class="tx-meta" style="margin-top:8px">Tarifni tanlang, administrator ko‘rsatgan rekvizitga to‘lang va to‘lov chekini yuboring. Obuna faqat administrator tekshirib tasdiqlagandan keyin faollashadi.</p></article>
+    <article class="card"><div class="section-title">Hisob va ma’lumotlar</div><p class="tx-meta" style="margin-top:8px" id="help-message">Operatsiyalar Telegram hisobingiz bilan bog‘lanadi. Yordam uchun botga murojaat qilib, Telegram ID’ingizni yuboring.</p><div class="status-chip" id="help-telegram-id" style="margin-top:10px">Telegram ID aniqlanmoqda…</div><a class="btn btn-ghost hidden" id="help-support-link" style="margin-top:10px;text-decoration:none" target="_blank" rel="noopener noreferrer">Administrator bilan bog‘lanish</a></article>
+  </div>
+</div>
+
+<!-- PRO -->
+<div id="page-pro" class="page hidden">
+  <div class="container" style="padding-top:16px">
+    <section class="pro-hero">
+      <div class="pro-kicker">Xarajat AI premium</div>
+      <h1>Moliyangizni keyingi bosqichga olib chiqing</h1>
+      <p>Chuqur tahlil, hisobotlar va aqlli tavsiyalar — barchasi bir obunada.</p>
+    </section>
+    <div class="pro-status" id="pro-status" aria-live="polite">Obuna holati yuklanmoqda…</div>
+    <div class="section" style="margin-top:20px">
+      <div class="section-header"><div><div class="section-title">PRO tarifini tanlang</div><div class="tx-meta">To‘lov administrator tekshiruvi bilan tasdiqlanadi</div></div></div>
+      <div class="pro-plans" id="pro-plans"><div class="card pro-muted">Tariflar yuklanmoqda…</div></div>
+    </div>
+    <section class="card hidden" id="payment-flow">
+      <div class="section-header"><div><div class="section-title">To‘lovni yakunlash</div><div class="tx-meta" id="payment-plan-summary">Tarif ma’lumoti</div></div><span class="status-chip">QO‘LDA TASDIQLANADI</span></div>
+      <div id="payment-details" class="pro-status">To‘lov rekvizitlari yuklanmoqda…</div>
+      <div class="form-group" style="margin-top:14px"><label class="form-label" for="receipt-reference">To‘lov izohi yoki tranzaksiya raqami</label><input id="receipt-reference" class="input" maxlength="100" placeholder="To‘lov ilovasidagi raqam"></div>
+      <div class="form-group"><label class="form-label" for="payment-receipt">Chek rasmi · JPG, PNG yoki WebP · 5 MB gacha</label><input id="payment-receipt" class="input" type="file" accept="image/jpeg,image/png,image/webp"></div>
+      <button class="btn" id="send-receipt-button" onclick="submitReceipt()">Chekni yuborish</button>
+      <button class="btn btn-ghost" style="margin-top:8px" onclick="$('payment-flow').classList.add('hidden')">Yopish</button>
+      <p class="tx-meta" style="margin-top:10px">Chek yuborish obunani faollashtirmaydi. PRO administrator tekshirib tasdiqlagandan keyin yoqiladi.</p>
+    </section>
+    <div class="card">
+      <div class="section-title" style="margin-bottom:12px">PRO imkoniyatlari</div>
+      <div class="pro-benefits">
+        <div class="pro-benefit"><span>✦</span><span>AI so‘rovlari uchun kunlik kvotasiz foydalanish (tezlik himoyasi bilan)</span></div>
+        <div class="pro-benefit"><span>✦</span><span>Ilg‘or moliyaviy tahlil va shaxsiy tavsiyalar</span></div>
+        <div class="pro-benefit"><span>✦</span><span>Oylik/yillik hisobotlar, kengaytirilgan grafiklar va statistika</span></div>
+        <div class="pro-benefit"><span>✦</span><span>Excel va PDF hisobotlarini eksport qilish</span></div>
+        <div class="pro-benefit"><span>✦</span><span>Daromad va xarajatlar tarixini cheklovsiz yuritish</span></div>
+      </div>
+      <p class="pro-muted" style="margin-top:12px">To‘lov qo‘lda tekshiriladi. Chek rasmi faqat ko‘rib chiqish uchun yuboriladi va obunani avtomatik faollashtirmaydi.</p>
+    </div>
+  </div>
+</div>
+
+<div id="page-admin" class="page hidden">
+  <div class="container" style="padding-top:16px">
+    <div class="section-header"><div><div class="pro-kicker">XARAJAT AI · MANAGEMENT</div><h1 style="font-size:26px;font-weight:800">Boshqaruv markazi</h1></div><button class="section-action" onclick="loadAdminPanel()">Yangilash</button></div>
+    <div class="card admin-wide">
+      <div class="admin-toolbar">
+        <button class="pill" onclick="adminScroll('admin-overview')">Umumiy</button>
+        <button class="pill" onclick="adminScroll('admin-payments-section')">To‘lovlar</button>
+        <button class="pill" onclick="adminScroll('admin-subscriptions-section')">Obunalar</button>
+        <button class="pill" onclick="adminScroll('admin-settings-section')">Sozlamalar</button>
+      </div>
+      <div class="admin-kpis" id="admin-overview" style="margin-top:14px">
+        <div class="admin-kpi"><span>Foydalanuvchilar</span><b id="admin-user-count">—</b></div>
+        <div class="admin-kpi"><span>Faol · 30 kun</span><b id="admin-active-count">—</b></div>
+        <div class="admin-kpi"><span>Faol PRO</span><b id="admin-pro-count">—</b></div>
+        <div class="admin-kpi"><span>Tekshiruvda</span><b id="admin-review-count">—</b></div>
+        <div class="admin-kpi"><span>Kutilayotgan to‘lovlar</span><b id="admin-pending-count">—</b></div>
+        <div class="admin-kpi"><span>Rad etilgan</span><b id="admin-rejected-count">—</b></div>
+        <div class="admin-kpi"><span>Tasdiqlangan</span><b id="admin-approved-count">—</b></div>
+        <div class="admin-kpi"><span>Daromad</span><b id="admin-revenue">—</b><span>UZS</span></div>
+      </div>
+    </div>
+    <div class="admin-layout">
+      <section class="card admin-wide" id="admin-payments-section">
+        <div class="section-header"><div><div class="section-title">To‘lovlarni ko‘rib chiqish</div><div class="tx-meta">Chekni tekshirib, tasdiqlang yoki rad eting</div></div><span class="status-chip" id="admin-review-badge">0 ta</span></div>
+        <div class="admin-list" id="admin-payments"><div class="admin-list-item">Yuklanmoqda…</div></div>
+      </section>
+      <section class="card" id="admin-subscriptions-section">
+        <div class="section-title">Obunani boshqarish</div>
+        <div class="form-group" style="margin-top:12px"><label class="form-label" for="admin-telegram-id">Telegram ID</label><input id="admin-telegram-id" class="input" type="number" inputmode="numeric" placeholder="123456789"></div>
+        <div class="form-group"><label class="form-label" for="admin-months">Muddat</label><select id="admin-months" class="select"><option value="1">1 oy</option><option value="3">3 oy</option><option value="6">6 oy</option><option value="12">12 oy</option></select></div>
+        <div class="admin-toolbar"><button class="btn" onclick="adminSubscription('grant')">PRO berish</button><button class="btn btn-ghost" onclick="adminSubscription('promo')">Promo</button></div>
+        <div class="admin-toolbar" style="margin-top:8px"><button class="btn btn-ghost" onclick="adminSubscription('extend')">Muddatni uzaytirish</button><button class="btn btn-ghost" onclick="adminSubscription('revoke')">Bekor qilish</button></div>
+        <div class="form-label" style="margin-top:16px">Faol PRO foydalanuvchilar</div><div id="admin-users" class="admin-list"></div>
+      </section>
+      <section class="card">
+        <div class="section-title">Tariflar va narxlar</div>
+        <div id="admin-plans" class="admin-list"></div>
+      </section>
+      <section class="card">
+        <div class="section-title">Yangi foydalanuvchilar</div>
+        <div id="admin-recent-users" class="admin-list"></div>
+      </section>
+      <section class="card admin-wide" id="admin-settings-section">
+        <div class="section-header"><div><div class="section-title">To‘lov rekvizitlari</div><div class="tx-meta">Foydalanuvchilarga ko‘rsatiladigan qo‘lda to‘lov tafsilotlari</div></div></div>
+        <div class="form-group"><label class="form-label" for="manual-bank">Bank yoki to‘lov ilovasi</label><input id="manual-bank" class="input" maxlength="100" placeholder="Masalan: Uzcard / Humo"></div>
+        <div class="form-group"><label class="form-label" for="manual-account">Karta raqami yoki hamyon</label><input id="manual-account" class="input" maxlength="100" autocomplete="off"></div>
+        <div class="form-group"><label class="form-label" for="manual-account-name">Hisob egasi</label><input id="manual-account-name" class="input" maxlength="100"></div>
+        <div class="form-group"><label class="form-label" for="manual-instructions">To‘lov yo‘riqnomasi</label><textarea id="manual-instructions" class="input" rows="3" maxlength="1000"></textarea></div>
+        <button class="btn" onclick="savePaymentDetails()">Rekvizitlarni saqlash</button>
+        <div class="section-title" style="margin-top:22px">Foydalanuvchilarga xabar yuborish</div>
+        <div class="form-group" style="margin-top:10px"><label class="form-label" for="admin-broadcast">Xabar matni</label><textarea id="admin-broadcast" class="input" rows="4" maxlength="4000" placeholder="Xabaringiz..."></textarea></div>
+        <button class="btn btn-ghost" onclick="sendBroadcast()">Barchaga yuborish</button>
+        <div class="section-title" style="margin-top:22px">AI yordamchi sozlamalari</div>
+        <label class="form-label" style="display:flex;align-items:center;gap:8px;margin-top:10px"><input id="admin-ai-enabled" type="checkbox"> AI xizmatini yoqish</label>
+        <div class="form-group"><label class="form-label" for="admin-ai-prompt">AI tizim ko‘rsatmasi</label><textarea id="admin-ai-prompt" class="input" rows="4" maxlength="2000"></textarea><div class="tx-meta" id="admin-ai-provider-state"></div></div>
+        <button class="btn btn-ghost" onclick="saveAiSettings()">AI sozlamalarini saqlash</button>
+        <div class="section-title" style="margin-top:22px">Bildirishnomalar va yordam markazi</div>
+        <label class="form-label" style="display:flex;align-items:center;gap:8px;margin-top:10px"><input id="admin-notifications-enabled" type="checkbox"> To‘lov holati haqida Telegram xabarlari</label>
+        <div class="form-group"><label class="form-label" for="admin-support-url">Yordam havolasi · HTTPS</label><input id="admin-support-url" class="input" maxlength="300" placeholder="https://t.me/..."></div>
+        <div class="form-group"><label class="form-label" for="admin-support-message">Foydalanuvchiga yordam matni</label><textarea id="admin-support-message" class="input" rows="3" maxlength="2000"></textarea></div>
+        <button class="btn btn-ghost" onclick="saveSystemSettings()">Tizim sozlamalarini saqlash</button>
+        <div class="section-title" style="margin-top:22px">Kategoriya boshqaruvi</div>
+        <div class="form-group"><label class="form-label" for="admin-expense-categories">Xarajat kategoriyalari · har qatorda bittasi</label><textarea id="admin-expense-categories" class="input" rows="4"></textarea></div>
+        <div class="form-group"><label class="form-label" for="admin-income-categories">Kirim kategoriyalari · har qatorda bittasi</label><textarea id="admin-income-categories" class="input" rows="4"></textarea></div>
+        <button class="btn btn-ghost" onclick="saveAdminCategories()">Kategoriyalarni saqlash</button>
+      </section>
+    </div>
+  </div>
+</div>
+
+<nav class="bottom-nav">
+  <div class="nav-list">
+    <button class="nav-btn active" data-page="home" onclick="sahifa('home')"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Bosh</button>
+    <button class="nav-btn" data-page="chek" onclick="sahifa('chek')"><svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>Chek</button>
+    <button class="nav-btn" data-page="budjet" onclick="sahifa('budjet')"><svg viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg>Budjet</button>
+    <button class="nav-btn" data-page="ai" onclick="sahifa('ai')"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>AI</button>
+    <button class="nav-btn" data-page="stats" onclick="sahifa('stats')"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Stat</button>
+    <button class="nav-btn pro-nav" data-page="pro" onclick="sahifa('pro')"><svg viewBox="0 0 24 24"><path d="m12 2 2.5 6.5L21 11l-6.5 2.5L12 20l-2.5-6.5L3 11l6.5-2.5L12 2Z"/></svg>PRO</button>
+    <button class="nav-btn" data-page="settings" onclick="sahifa('settings')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Sozlama</button>
+  </div>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ==========================================
+// 1. GLOBAL O'ZGARUVCHILAR
+// ==========================================
+var currentType = "expense";
+var currentFilter = "all";
+var proPlans = [];
+var currentUser = null;
+var subscriptionIsPro = false;
+var selectedPayment = null;
+var userPaymentHistory = [];
+var configuredApiBaseUrl = (document.querySelector('meta[name="api-base-url"]') || {}).content || "";
+var isLocalHost = window.location && ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+var apiBaseUrl = isLocalHost ? window.location.origin : configuredApiBaseUrl.trim().replace(/\/+$/, "");
+if (!apiBaseUrl && window.location && /^https?:$/.test(window.location.protocol)) {
+  apiBaseUrl = window.location.origin;
+}
+var accountSyncState = "guest";
+var KAT_EXPENSE = [{v:"Oziq-ovqat",e:"🍔"},{v:"Transport",e:"🚕"},{v:"Uy-joy",e:"🏠"},{v:"Kiyim",e:"👕"},{v:"Sog'liq",e:"💊"},{v:"Ko'ngilochar",e:"🎉"},{v:"Boshqa",e:"📦"}];
+var KAT_INCOME = [{v:"Ish haqi",e:"💰"},{v:"Biznes",e:"💼"},{v:"Sovg'a",e:"🎁"},{v:"Qo'shimcha",e:"➕"},{v:"Boshqa kirim",e:"📥"}];
+
+// ==========================================
+// 2. YORDAMCHI FUNKSIYALAR
+// ==========================================
+function $(id) { return document.getElementById(id); }
+function fmt(n) { return Math.round(n || 0).toLocaleString("uz-UZ"); }
+function escape(s) { var d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
+function telegramInitData() {
+  var webApp = window.Telegram && window.Telegram.WebApp;
+  if (webApp && typeof webApp.initData === "string" && webApp.initData) {
+    return webApp.initData;
+  }
+  try { return new URLSearchParams(window.location.search).get("tgWebAppData") || ""; }
+  catch (error) { return ""; }
+}
+function isTelegramWebApp() {
+  return Boolean((window.Telegram && window.Telegram.WebApp) || telegramInitData());
+}
+function setAccountSyncStatus(state, message) {
+  accountSyncState = state;
+  var status = $("account-sync-status");
+  if (status) {
+    status.textContent = message || "";
+    status.classList.toggle("hidden", state === "ready" || state === "guest");
+  }
+  var locked = isTelegramWebApp() && state !== "ready";
+  var accountData = document.querySelectorAll("[data-account-data]");
+  for (var i = 0; i < accountData.length; i++) accountData[i].classList.toggle("hidden", locked);
+}
+async function apiRequest(path, options) {
+  var config = options || {};
+  var headers = Object.assign({}, config.headers || {});
+  var initData = telegramInitData();
+  if (initData) headers["X-Telegram-Init-Data"] = initData;
+  var isFormData = typeof FormData !== "undefined" && config.body instanceof FormData;
+  if (config.body && !isFormData && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
+  if (!apiBaseUrl) {
+    throw new Error("Backend API manzili belgilanmagan. Ilovani HTTP(S) orqali oching yoki api-base-url ni sozlang.");
+  }
+  var requestUrl = apiBaseUrl + path;
+  var response;
+  try {
+    response = await fetch(requestUrl, Object.assign({}, config, { headers: headers }));
+  } catch (error) {
+    throw new Error("Backend bilan bog‘lanib bo‘lmadi (" + requestUrl + "). API manzilini, server holatini va HTTPS/CORS sozlamalarini tekshiring. " + error.message);
+  }
+  var responseText = await response.text();
+  var data = null;
+  try { data = responseText ? JSON.parse(responseText) : null; }
+  catch (error) {
+    throw new Error("API " + path + " JSON o‘rniga noto‘g‘ri javob qaytardi (HTTP " + response.status +
+      "). Backend manzili to‘g‘ri ekanini tekshiring.");
+  }
+  if (!response.ok) {
+    throw new Error(data && data.error ? data.error : "API " + path + " HTTP " + response.status +
+      (response.statusText ? " " + response.statusText : "") + " javobini qaytardi.");
+  }
+  if (data === null) throw new Error("API " + path + " bo‘sh javob qaytardi.");
+  return data;
+}
+function toast(text, type) {
+  var el = $("toast");
+  el.textContent = text;
+  el.className = "toast show " + (type || "");
+  clearTimeout(el._t);
+  el._t = setTimeout(function() { el.className = "toast"; }, 2500);
+}
+function emojiOf(k) {
+  for(var i=0;i<KAT_EXPENSE.length;i++) if(KAT_EXPENSE[i].v===k) return KAT_EXPENSE[i].e;
+  for(var j=0;j<KAT_INCOME.length;j++) if(KAT_INCOME[j].v===k) return KAT_INCOME[j].e;
+  return "📦";
+}
+
+// ==========================================
+// 3. MA'LUMOTLAR
+// ==========================================
+function transactionStorageKey() {
+  if (!isTelegramWebApp()) return "xarajatlar";
+  return currentUser ? "xarajatlar:telegram:" + String(currentUser.telegram_id) : null;
+}
+function getTx() {
+  var key = transactionStorageKey();
+  if (!key) return [];
+  try { return JSON.parse(localStorage.getItem(key) || "[]"); }
+  catch (error) { return []; }
+}
+function saveTx(list) {
+  var key = transactionStorageKey();
+  if (!key) throw new Error("Telegram hisobi hali tasdiqlanmagan.");
+  localStorage.setItem(key, JSON.stringify(list));
+}
+
+// ==========================================
+// 4. SAHIFALAR VA TEMA
+// ==========================================
+function sahifa(nom) {
+  var pages = document.querySelectorAll(".page");
+  for (var i = 0; i < pages.length; i++) pages[i].classList.add("hidden");
+  var target = $("page-" + nom);
+  if (target) target.classList.remove("hidden");
+  
+  var navs = document.querySelectorAll(".nav-btn");
+  var activeNav = ["admin", "notifications", "help"].indexOf(nom) >= 0 ? "settings" : nom;
+  for (var j = 0; j < navs.length; j++) {
+    navs[j].classList.remove("active");
+    if (navs[j].getAttribute("data-page") === activeNav) navs[j].classList.add("active");
+  }
+  window.scrollTo(0, 0);
+  if (nom === "pro") loadProPage();
+  if (nom === "admin") loadAdminPanel();
+  if (nom === "notifications") loadNotifications();
+  if (nom === "help") loadHelpSettings();
+}
+
+function toggleTheme() {
+  var isDark = document.body.classList.toggle("dark");
+  localStorage.setItem("theme", isDark ? "dark" : "light");
+}
+
+// ==========================================
+// 5. TURNI ALMASHTIRISH
+// ==========================================
+function setType(type) {
+  currentType = type;
+  if (type === "expense") {
+    $("form-title").textContent = "Yangi xarajat";
+    $("form-type-btn").textContent = "+ Kirim";
+    $("btn-save").textContent = "Xarajat qo'shish";
+    $("btn-save").className = "btn";
+    $("label-nomi").textContent = "Nomi";
+  } else {
+    $("form-title").textContent = "Yangi kirim";
+    $("form-type-btn").textContent = "+ Xarajat";
+    $("btn-save").textContent = "Kirim qo'shish";
+    $("btn-save").className = "btn btn-success";
+    $("label-nomi").textContent = "Manba";
+  }
+  var list = (type === "income") ? KAT_INCOME : KAT_EXPENSE;
+  var custom = loadCustomCategories()[type] || [];
+  list = list.concat(custom.filter(function(item) {
+    return !list.some(function(existing) { return existing.v === item.v; });
+  }));
+  var html = "";
+  for (var i = 0; i < list.length; i++) {
+    html += '<option value="' + escape(list[i].v) + '">' + escape(list[i].e) + ' ' + escape(list[i].v) + '</option>';
+  }
+  $("kategoriya").innerHTML = html;
+  $("chek-kategoriya").innerHTML = html;
+}
+
+function toggleFormType() { setType(currentType === "expense" ? "income" : "expense"); }
+function quickAdd(type) { setType(type); window.scrollTo(0, 300); }
+function setFilter(f, btn) {
+  currentFilter = f;
+  var pills = document.querySelectorAll(".filter-bar .pill");
+  for (var i = 0; i < pills.length; i++) pills[i].classList.remove("active");
+  btn.classList.add("active");
+  yangila();
+}
+
+// ==========================================
+// 6. QO'SHISH VA O'CHIRISH
+// ==========================================
+async function qosh() {
+  if (isTelegramWebApp() && (accountSyncState !== "ready" || !currentUser)) {
+    return toast("Hisob server bilan sinxronlanmagan. Aloqa tiklangach qayta urinib ko‘ring.", "error");
+  }
+  var nomi = $("nomi").value.trim();
+  var summa = Number($("summa").value);
+  var kategoriya = $("kategoriya").value;
+  if (!nomi || nomi.length > 100) return toast("Nomi 1–100 belgi bo‘lishi kerak.", "error");
+  if (!Number.isSafeInteger(summa) || summa <= 0 || summa > 1000000000000) return toast("Summani 1 dan 1 000 000 000 000 UZS gacha kiriting.", "error");
+  var item = { id: Date.now(), nomi: nomi, summa: Math.round(summa), kategoriya: kategoriya, type: currentType, sana: new Date().toISOString() };
+  try {
+    var saved = await persistTransaction(item);
+    var list = getTx();
+    list.unshift(saved || item);
+    saveTx(list);
+    $("nomi").value = ""; $("summa").value = "";
+    yangila();
+    toast(saved ? "Hisob serverga saqlandi" : "Qurilmada saqlandi", "success");
+  } catch (error) {
+    toast("Operatsiya saqlanmadi: " + error.message, "error");
+  }
+}
+
+async function ochir(id) {
+  if (isTelegramWebApp() && (accountSyncState !== "ready" || !currentUser)) {
+    return toast("Hisob server bilan sinxronlanmagan. O‘chirish amalga oshmadi.", "error");
+  }
+  if (!confirm("O'chirishni tasdiqlaysizmi?")) return;
+  var item = getTx().find(function(tx) { return String(tx.id) === String(id); });
+  if (!item) return;
+  if (isTelegramWebApp() && currentUser) {
+    try {
+      await apiRequest("/api/transactions/" + encodeURIComponent(item.id), { method: "DELETE" });
+    } catch (error) {
+      return toast("Serverdan o‘chirib bo‘lmadi: " + error.message, "error");
+    }
+  }
+  saveTx(getTx().filter(function(x) { return String(x.id) !== String(id); }));
+  yangila();
+  toast("Operatsiya o‘chirildi", "success");
+}
+
+async function chekSaqlash() {
+  if (isTelegramWebApp() && (accountSyncState !== "ready" || !currentUser)) {
+    return toast("Hisob server bilan sinxronlanmagan. Aloqa tiklangach qayta urinib ko‘ring.", "error");
+  }
+  var nomi = $("chek-nomi").value.trim() || "Chek";
+  var summa = Number($("chek-summa").value);
+  var kategoriya = $("chek-kategoriya").value;
+  if (!Number.isSafeInteger(summa) || summa <= 0 || summa > 1000000000000) return toast("Summani 1 dan 1 000 000 000 000 UZS gacha kiriting.", "error");
+  var item = { id: Date.now(), nomi: nomi, summa: Math.round(summa), kategoriya: kategoriya, type: "expense", sana: new Date().toISOString() };
+  try {
+    var saved = await persistTransaction(item);
+    var list = getTx();
+    list.unshift(saved || item);
+    saveTx(list);
+    $("chek-nomi").value=""; $("chek-summa").value="";
+    yangila();
+    toast(saved ? "Chek serverdagi hisobga saqlandi" : "Chek qurilmada saqlandi", "success");
+    sahifa("home");
+  } catch (error) {
+    toast("Chek saqlanmadi: " + error.message, "error");
+  }
+}
+
+function mapServerTransaction(row) {
+  return {
+    id: row.id,
+    clientId: row.client_id || null,
+    nomi: row.note || row.category,
+    summa: Number(row.amount),
+    kategoriya: row.category,
+    type: row.type,
+    sana: row.date
+  };
+}
+
+async function persistTransaction(item) {
+  if (!telegramInitData()) return null;
+  if (!currentUser) throw new Error("Telegram hisobi tasdiqlanmagan.");
+  var clientId = item.clientId || "web-" + String(item.id) + "-" + Math.random().toString(36).slice(2, 8);
+  var row = await apiRequest("/api/transactions", {
+    method: "POST",
+    body: JSON.stringify({
+      clientId: clientId,
+      type: item.type,
+      amount: Number(item.summa),
+      category: item.kategoriya,
+      note: item.nomi,
+      date: item.sana
+    })
+  });
+  return mapServerTransaction(row);
+}
+
+async function syncTransactions() {
+  if (!telegramInitData()) return false;
+  if (!currentUser) currentUser = await apiRequest("/api/auth", { method: "POST", body: "{}" });
+  var rows = await apiRequest("/api/transactions");
+  saveTx(rows.map(mapServerTransaction));
+  return true;
+}
+
+async function aiSend() {
+  var q = $("ai-input").value.trim();
+  if (!q || q.length > 4000) return toast("Savol 1–4000 belgi bo‘lishi kerak.", "error");
+  if (!telegramInitData()) return toast("AI chat uchun Telegram bot ichida oching.", "error");
+  var input = $("ai-input"), button = $("ai-send-button"), history = $("ai-messages");
+  input.disabled = true;
+  if (button) button.disabled = true;
+  var userMessage = document.createElement("article");
+  userMessage.className = "card";
+  userMessage.style.margin = "8px 0";
+  userMessage.innerHTML = '<div class="tx-meta">SIZNING SAVOLINGIZ</div><div style="margin-top:5px">' + escape(q) + '</div>';
+  history.appendChild(userMessage);
+  var loading = document.createElement("article");
+  loading.className = "card";
+  loading.textContent = "Moliyaviy savolingiz tahlil qilinmoqda…";
+  history.appendChild(loading);
+  loading.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  try {
+    var response = await apiRequest("/api/ai/chat", {
+      method: "POST",
+      body: JSON.stringify({ question: q })
+    });
+    if (!response.isPro) toast("Bepul AI limiti: " + response.used + "/" + response.limit, "success");
+    $("ai-input").value = "";
+    loading.className = "card";
+    loading.innerHTML = '<div class="pro-kicker">XARAJAT AI · TAHLIL</div><div style="margin-top:8px;white-space:pre-wrap;line-height:1.65">' +
+      escape(response.answer) + '</div>';
+  } catch (error) {
+    loading.remove();
+    toast(error.message, "error");
+  } finally {
+    input.disabled = false;
+    if (button) button.disabled = false;
+    input.focus();
+  }
+}
+
+// ==========================================
+// 7. KO'RINISH
+// ==========================================
+function yangila() {
+  var list = getTx();
+  var income = 0, expense = 0;
+  for (var i = 0; i < list.length; i++) {
+    if (list[i].type === "income") income += list[i].summa;
+    else expense += list[i].summa;
+  }
+  
+  $("balans").textContent = fmt(income - expense);
+  $("kirim-oy").textContent = "+" + fmt(income);
+  $("xarajat-oy").textContent = "−" + fmt(expense);
+
+  var filtered = list; 
+  if(currentFilter !== "all") filtered = list.filter(function(x){return x.type === currentFilter});
+  
+  $("ops-count").textContent = filtered.length + " ta";
+  var r = $("royxat");
+  
+  if (filtered.length === 0) {
+    r.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-title">Hali yo\'q</div><div class="empty-desc">Birinchi operatsiyani qo\'shing</div></div>';
+  } else {
+    var html = "";
+    for (var j = 0; j < filtered.length; j++) {
+      var x = filtered[j];
+      var isInc = x.type === "income";
+      html += '<div class="tx-row">';
+      html += '<div class="tx-icon ' + (isInc ? 'income' : 'expense') + '">' + emojiOf(x.kategoriya) + '</div>';
+      html += '<div class="tx-info"><div class="tx-name">' + escape(x.nomi) + '</div><div class="tx-meta">' + escape(x.kategoriya) + '</div></div>';
+      html += '<div class="tx-amount ' + (isInc ? 'income' : '') + '">' + (isInc ? '+' : '−') + fmt(x.summa) + '</div>';
+      html += '<button class="tx-delete" onclick="ochir(' + x.id + ')">✕</button>';
+      html += '</div>';
+    }
+    r.innerHTML = html;
+  }
+  renderUmumiy(list);
+  renderStats();
+  renderDashboardInsights(list);
+  renderBudgetSummary(list);
+  renderProfile();
+}
+
+function getMonthStart(offset) {
+  var now = new Date();
+  return new Date(now.getFullYear(), now.getMonth() + offset, 1);
+}
+
+function renderDashboardInsights(list) {
+  var now = new Date();
+  var currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  var monthLabels = ["Yan", "Fev", "Mar", "Apr", "May", "Iyun", "Iyul", "Avg", "Sen", "Okt", "Noy", "Dek"];
+  var monthIncome = 0, monthExpense = 0;
+  var categoryTotals = {};
+  var months = [];
+  for (var m = 5; m >= 0; m--) {
+    var monthStart = getMonthStart(-m);
+    months.push({
+      date: monthStart,
+      label: monthLabels[monthStart.getMonth()],
+      income: 0,
+      expense: 0
+    });
+  }
+  for (var i = 0; i < list.length; i++) {
+    var tx = list[i], amount = Number(tx.summa) || 0;
+    var date = new Date(tx.sana);
+    if (isNaN(date.getTime())) continue;
+    if (date >= currentMonth) {
+      if (tx.type === "income") monthIncome += amount;
+      else {
+        monthExpense += amount;
+        var category = tx.kategoriya || "Boshqa";
+        categoryTotals[category] = (categoryTotals[category] || 0) + amount;
+      }
+    }
+    for (var j = 0; j < months.length; j++) {
+      if (date.getFullYear() === months[j].date.getFullYear() &&
+          date.getMonth() === months[j].date.getMonth()) {
+        if (tx.type === "income") months[j].income += amount;
+        else months[j].expense += amount;
+        break;
+      }
+    }
+  }
+  var max = Math.max.apply(null, months.map(function(item) {
+    return Math.max(item.income, item.expense);
+  }).concat([1]));
+  $("dashboard-trend").innerHTML = months.map(function(item) {
+    var incomeHeight = Math.max(3, Math.round(item.income / max * 74));
+    var expenseHeight = Math.max(3, Math.round(item.expense / max * 74));
+    return '<div class="mini-chart-column"><div class="mini-chart-bars"><span class="mini-chart-bar" style="height:' +
+      incomeHeight + 'px" title="Kirim ' + fmt(item.income) + '"></span><span class="mini-chart-bar expense" style="height:' +
+      expenseHeight + 'px" title="Xarajat ' + fmt(item.expense) + '"></span></div><span class="mini-chart-label">' +
+      escape(item.label) + '</span></div>';
+  }).join("");
+  var categories = Object.keys(categoryTotals).sort(function(a, b) {
+    return categoryTotals[b] - categoryTotals[a];
+  }).slice(0, 4);
+  var categoryMax = Math.max.apply(null, categories.map(function(key) {
+    return categoryTotals[key];
+  }).concat([1]));
+  $("dashboard-categories").innerHTML = categories.length ? categories.map(function(key) {
+    return '<div class="category-line"><span>' + escape(key) + '</span><b>' + fmt(categoryTotals[key]) + '</b>' +
+      '<div class="category-track"><span style="width:' + Math.max(3, Math.round(categoryTotals[key] / categoryMax * 100)) + '%"></span></div></div>';
+  }).join("") : '<div class="empty" style="padding:18px 8px"><div class="empty-title">Hozircha xarajat yo‘q</div><div class="empty-desc">Yozuvlar qo‘shilgach tahlil ko‘rinadi.</div></div>';
+  $("dashboard-monthly").innerHTML =
+    '<div class="settings-row"><span>Kirim</span><b style="color:var(--success)">+' + fmt(monthIncome) + '</b></div>' +
+    '<div class="settings-row"><span>Xarajat</span><b style="color:var(--warning)">−' + fmt(monthExpense) + '</b></div>' +
+    '<div class="settings-row"><span>Natija</span><b>' + fmt(monthIncome - monthExpense) + '</b></div>';
+}
+
+function renderBudgetSummary(list) {
+  var input = $("budget-limit");
+  if (!input) return;
+  var limit = Number(localStorage.getItem("xarajat-ai-budget")) || 0;
+  if (document.activeElement !== input) input.value = limit || "";
+  var month = new Date();
+  var spent = list.reduce(function(total, item) {
+    var date = new Date(item.sana);
+    return item.type !== "income" && date.getFullYear() === month.getFullYear() &&
+      date.getMonth() === month.getMonth() ? total + (Number(item.summa) || 0) : total;
+  }, 0);
+  var summary = $("budget-summary");
+  if (!limit) {
+    summary.innerHTML = '<div class="empty" style="padding:18px"><div class="empty-title">Budjet belgilanmagan</div><div class="empty-desc">Xarajatlaringizni kuzatish uchun oylik limit kiriting.</div></div>';
+    return;
+  }
+  var percent = Math.min(100, Math.round(spent / limit * 100));
+  summary.innerHTML = '<div class="settings-row"><span>Sarflangan</span><b>' + fmt(spent) + ' UZS</b></div>' +
+    '<div class="settings-row"><span>Qolgan</span><b>' + fmt(Math.max(0, limit - spent)) + ' UZS</b></div>' +
+    '<div class="category-track" style="height:9px;margin-top:12px"><span style="width:' + percent + '%;background:' +
+    (percent >= 100 ? 'var(--danger)' : 'linear-gradient(90deg,#44D698,#148253)') + '"></span></div>' +
+    '<div class="tx-meta" style="margin-top:7px">' + percent + '% ishlatildi · Limit ' + fmt(limit) + ' UZS</div>';
+}
+
+function saveBudget() {
+  var amount = Number($("budget-limit").value);
+  if (!Number.isSafeInteger(amount) || amount < 0 || amount > 1000000000000) {
+    return toast("0 dan 1 000 000 000 000 gacha butun summa kiriting.", "error");
+  }
+  localStorage.setItem("xarajat-ai-budget", String(amount));
+  renderBudgetSummary(getTx());
+  toast("Oylik budjet saqlandi.", "success");
+}
+
+function renderProfile() {
+  var profileName = $("profile-name");
+  if (!profileName) return;
+  var name = currentUser && currentUser.first_name || "Xarajat AI foydalanuvchisi";
+  profileName.textContent = name;
+  $("profile-avatar").textContent = name.split(/\s+/).slice(0, 2).map(function(part) {
+    return part.charAt(0).toUpperCase();
+  }).join("") || "XA";
+  $("profile-id").textContent = currentUser ? "Telegram ID · " + currentUser.telegram_id : "Telegram ilovasiga ulang";
+  $("profile-plan").textContent = subscriptionIsPro ? "PRO" : "FREE";
+  if (currentUser && currentUser.isAdmin) $("open-admin").classList.remove("hidden");
+  if (currentUser) {
+    var helpId = $("help-telegram-id");
+    if (helpId) helpId.textContent = "Telegram ID · " + currentUser.telegram_id;
+  }
+}
+
+async function loadCategories() {
+  var categories = await apiRequest("/api/categories");
+  if (!Array.isArray(categories.expense) || !Array.isArray(categories.income)) {
+    throw new Error("Kategoriya ma’lumotlari noto‘g‘ri.");
+  }
+  KAT_EXPENSE = categories.expense;
+  KAT_INCOME = categories.income;
+  setType(currentType);
+}
+
+async function loadHelpSettings() {
+  try {
+    var settings = await apiRequest("/api/public-settings");
+    $("help-message").textContent = settings.supportMessage;
+    if (settings.supportUrl) {
+      $("help-support-link").href = settings.supportUrl;
+      $("help-support-link").classList.remove("hidden");
+    } else {
+      $("help-support-link").classList.add("hidden");
+    }
+  } catch (error) {
+    $("help-message").textContent = error.message;
+  }
+}
+
+function loadCustomCategories() {
+  try { return JSON.parse(localStorage.getItem("xarajat-ai-categories") || '{"income":[],"expense":[]}'); }
+  catch (error) { return { income: [], expense: [] }; }
+}
+
+function manageCategories() {
+  var choice = prompt("Qaysi toifaga qo‘shamiz? Kirim yoki xarajat deb yozing.", "xarajat");
+  if (!choice) return;
+  var type = choice.toLowerCase().indexOf("kir") === 0 || choice.toLowerCase() === "income" ? "income" : "expense";
+  var name = prompt("Yangi toifa nomini kiriting.");
+  if (!name || !name.trim()) return;
+  name = name.trim().slice(0, 40);
+  var base = type === "income" ? KAT_INCOME : KAT_EXPENSE;
+  if (base.some(function(item) { return item.v.toLowerCase() === name.toLowerCase(); })) {
+    return toast("Bu toifa allaqachon mavjud.", "error");
+  }
+  var categories = loadCustomCategories();
+  categories[type] = categories[type] || [];
+  if (categories[type].some(function(item) { return item.v.toLowerCase() === name.toLowerCase(); })) {
+    return toast("Bu toifa allaqachon mavjud.", "error");
+  }
+  categories[type].push({ v: name, e: type === "income" ? "＋" : "◇" });
+  localStorage.setItem("xarajat-ai-categories", JSON.stringify(categories));
+  if (currentType === type) setType(type);
+  toast("Yangi toifa qo‘shildi.", "success");
+}
+
+function renderUmumiy(list) {
+  var el = $("umumiy-stat"); if (!el) return;
+  var inc = 0, exp = 0;
+  for (var i=0; i<list.length; i++) {
+    if (list[i].type === "income") inc += list[i].summa;
+    else exp += list[i].summa;
+  }
+  el.innerHTML = '<div class="settings-row"><span class="label">Jami kirim</span><span class="value" style="color:var(--success)">+' + fmt(inc) + '</span></div><div class="settings-row"><span class="label">Jami xarajat</span><span class="value">−' + fmt(exp) + '</span></div><div class="settings-row"><span class="label"><b>Balans</b></span><span class="value" style="color:var(--primary)">' + fmt(inc - exp) + '</span></div><div class="settings-row"><span class="label">Operatsiyalar</span><span class="value">' + list.length + '</span></div>';
+}
+
+function reportRows() {
+  var months = $("report-period") ? Number($("report-period").value) : 1;
+  var now = new Date();
+  var start = new Date(now.getFullYear(), now.getMonth() - months + 1, 1);
+  return getTx().filter(function(item) {
+    var date = new Date(item.sana);
+    return !isNaN(date.getTime()) && date >= start && date <= now;
+  });
+}
+
+function renderStats() {
+  var list = getTx();
+  var basicIncome = 0, basicExpense = 0;
+  for (var i = 0; i < list.length; i++) {
+    if (list[i].type === "income") basicIncome += Number(list[i].summa) || 0;
+    else basicExpense += Number(list[i].summa) || 0;
+  }
+  $("stats-basic").innerHTML =
+    '<div class="section-title" style="margin-bottom:8px">Asosiy statistika</div>' +
+    '<div class="settings-row"><span>Jami kirim</span><b style="color:var(--success)">+' + fmt(basicIncome) + ' UZS</b></div>' +
+    '<div class="settings-row"><span>Jami xarajat</span><b>−' + fmt(basicExpense) + ' UZS</b></div>' +
+    '<div class="settings-row"><span>Balans</span><b>' + fmt(basicIncome - basicExpense) + ' UZS</b></div>' +
+    '<div class="settings-row"><span>Operatsiyalar</span><b>' + list.length + '</b></div>';
+
+  $("stats-pro").classList.toggle("hidden", !subscriptionIsPro);
+  if (!subscriptionIsPro) return;
+
+  var period = reportRows();
+  var income = 0, expense = 0, categories = {};
+  for (var j = 0; j < period.length; j++) {
+    var tx = period[j], amount = Number(tx.summa) || 0;
+    if (tx.type === "income") income += amount;
+    else {
+      expense += amount;
+      categories[tx.kategoriya || "Boshqa"] = (categories[tx.kategoriya || "Boshqa"] || 0) + amount;
+    }
+  }
+  $("report-summary").innerHTML =
+    '<div class="settings-row"><span>Kirim</span><b style="color:var(--success)">+' + fmt(income) + ' UZS</b></div>' +
+    '<div class="settings-row"><span>Xarajat</span><b>−' + fmt(expense) + ' UZS</b></div>' +
+    '<div class="settings-row"><span>Natija</span><b>' + fmt(income - expense) + ' UZS</b></div>';
+
+  var max = Math.max.apply(null, Object.keys(categories).map(function(key) { return categories[key]; }).concat([1]));
+  var keys = Object.keys(categories).sort(function(a, b) { return categories[b] - categories[a]; });
+  $("report-chart").innerHTML = keys.length ? keys.map(function(key) {
+    var percent = Math.max(4, Math.round(categories[key] / max * 100));
+    return '<div class="admin-list-item"><div style="display:flex;justify-content:space-between"><span>' +
+      escape(key) + '</span><b>' + fmt(categories[key]) + ' UZS</b></div><div style="height:6px;border-radius:6px;background:var(--surface-3);margin-top:7px"><div style="width:' +
+      percent + '%;height:100%;border-radius:6px;background:linear-gradient(90deg,#D8B65D,#A97922)"></div></div></div>';
+  }).join("") : '<div class="admin-list-item">Tanlangan davrda xarajatlar yo‘q.</div>';
+
+  var advice = expense > income
+    ? "Tanlangan davrda xarajatlar kirimdan yuqori. Xarajat toifalarini ko‘rib chiqing."
+    : expense > 0
+      ? "Xarajat/kirim nisbati: " + Math.round(expense / Math.max(income, 1) * 100) + "%. Eng katta toifani nazorat qiling."
+      : "Tahlil uchun xarajat operatsiyalarini qo‘shing.";
+  $("report-advice").textContent = advice;
+}
+
+async function generateAiAdvice() {
+  if (!subscriptionIsPro) return toast("AI tavsiyasi PRO tarifida mavjud.", "error");
+  var rows = reportRows(), income = 0, expense = 0;
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i].type === "income") income += Number(rows[i].summa) || 0;
+    else expense += Number(rows[i].summa) || 0;
+  }
+  var question = "Shu davrdagi moliyaviy natijam bo‘yicha qisqa, amaliy tavsiya bering. Kirim: " +
+    income + " UZS; xarajat: " + expense + " UZS; balans: " + (income - expense) + " UZS.";
+  try {
+    var result = await apiRequest("/api/ai/chat", {
+      method: "POST",
+      body: JSON.stringify({ question: question })
+    });
+    $("report-advice").textContent = result.answer;
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+function exportExcel() {
+  if (!subscriptionIsPro) return toast("Excel eksport PRO tarifida mavjud.", "error");
+  var rows = reportRows();
+  var data = [["Sana", "Turi", "Nomi", "Kategoriya", "Summa UZS"]];
+  for (var i = 0; i < rows.length; i++) {
+    var item = rows[i];
+    data.push([formatDate(item.sana), item.type === "income" ? "Kirim" : "Xarajat", item.nomi, item.kategoriya, item.summa]);
+  }
+  var csv = "\uFEFF" + data.map(function(row) {
+    return row.map(function(value) {
+      var text = String(value == null ? "" : value);
+      if (/^[=+\-@\t\r]/.test(text)) text = "'" + text;
+      return '"' + text.replace(/"/g, '""') + '"';
+    }).join(",");
+  }).join("\r\n");
+  var link = document.createElement("a");
+  link.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  link.download = "xarajat-ai-hisobot.csv";
+  link.click();
+  setTimeout(function() { URL.revokeObjectURL(link.href); }, 1000);
+}
+
+function exportPdf() {
+  if (!subscriptionIsPro) return toast("PDF hisoboti PRO tarifida mavjud.", "error");
+  var rows = reportRows();
+  var printWindow = window.open("", "_blank");
+  if (!printWindow) return toast("PDF oynasini ochishga ruxsat bering.", "error");
+  var table = rows.map(function(item) {
+    return "<tr><td>" + escape(formatDate(item.sana)) + "</td><td>" +
+      escape(item.type === "income" ? "Kirim" : "Xarajat") + "</td><td>" +
+      escape(item.nomi) + "</td><td>" + escape(item.kategoriya) + "</td><td>" +
+      fmt(item.summa) + "</td></tr>";
+  }).join("");
+  printWindow.document.write("<!doctype html><html><head><meta charset=\"utf-8\"><title>Xarajat AI hisoboti</title>" +
+    "<style>body{font:14px Arial;padding:24px;color:#111}h1{color:#8b6a24}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:8px;border-bottom:1px solid #ddd}</style>" +
+    "</head><body><h1>Xarajat AI — moliyaviy hisobot</h1><p>" + new Date().toLocaleDateString("uz-UZ") +
+    "</p><table><thead><tr><th>Sana</th><th>Turi</th><th>Nomi</th><th>Kategoriya</th><th>UZS</th></tr></thead><tbody>" +
+    table + "</tbody></table></body></html>");
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
+}
+
+function rasmTanlash(event) {
+  var file = event.target.files && event.target.files[0];
+  if (!file) return;
+  if (!file.type || file.type.indexOf("image/") !== 0) {
+    event.target.value = "";
+    return toast("Rasm faylini tanlang.", "error");
+  }
+  var image = $("rasm-img");
+  if (image.dataset.previewUrl) URL.revokeObjectURL(image.dataset.previewUrl);
+  image.dataset.previewUrl = URL.createObjectURL(file);
+  image.src = image.dataset.previewUrl;
+  $("rasm-preview").classList.remove("hidden");
+}
+
+function formatDate(value) {
+  if (!value) return "—";
+  var date = new Date(value);
+  return isNaN(date.getTime()) ? "—" : date.toLocaleDateString("uz-UZ");
+}
+
+function renderProPlans() {
+  var container = $("pro-plans");
+  if (!proPlans.length) {
+    container.innerHTML = '<div class="card pro-muted">Hozircha faol tarif mavjud emas.</div>';
+    return;
+  }
+  var html = "";
+  for (var i = 0; i < proPlans.length; i++) {
+    var plan = proPlans[i];
+    html += '<article class="pro-plan"><div class="pro-plan-head"><div class="pro-plan-title">' +
+      escape(plan.name) + '</div><div class="pro-plan-price">' + fmt(plan.price_uzs) +
+      ' so‘m</div></div><div class="pro-muted">' + Number(plan.duration_months) +
+      ' oy · bir martalik to‘lov</div><button class="btn" onclick="buyPro(\'' + escape(plan.id) +
+      '\')">Tarifni tanlash</button></article>';
+  }
+  container.innerHTML = html;
+}
+
+async function loadProPage(force) {
+  if (window.proPageLoading && !force) return;
+  window.proPageLoading = true;
+  var status = $("pro-status");
+  status.textContent = "Tarif va obuna ma’lumotlari yuklanmoqda…";
+  try {
+    proPlans = await apiRequest("/api/plans");
+    renderProPlans();
+    if (!telegramInitData()) {
+      status.textContent = "Obuna holatini tekshirish va xarid qilish uchun ilovani Telegram bot ichida oching.";
+      return;
+    }
+
+    if (!currentUser) currentUser = await apiRequest("/api/auth", { method: "POST", body: "{}" });
+    var subscription = await apiRequest("/api/subscription/status");
+    subscriptionIsPro = Boolean(subscription.isPro);
+    renderProfile();
+    renderStats();
+    status.innerHTML = subscription.isPro
+      ? '<strong>👑 PRO faol</strong><div class="pro-muted">Amal qilish muddati: ' +
+        formatDate(subscription.expiresAt) + ' · Qolgan: ' + subscription.daysLeft + ' kun</div>'
+      : '<strong>FREE tarif</strong><div class="pro-muted">PRO obunasi hozir faol emas.</div>';
+    if (currentUser.isAdmin) $("open-admin").classList.remove("hidden");
+  } catch (error) {
+    status.textContent = error.message;
+    $("pro-plans").innerHTML = '<div class="card pro-muted">' + escape(error.message) + '</div>';
+  } finally {
+    window.proPageLoading = false;
+  }
+}
+
+async function buyPro(planId) {
+  if (!telegramInitData()) {
+    toast("Xarid qilish uchun Telegram bot ichida oching.", "error");
+    return;
+  }
+  if (window.proPurchasePending) return;
+  var plan = proPlans.find(function(item) { return item.id === planId; });
+  if (!plan) return toast("Tarif topilmadi. Sahifani yangilang.", "error");
+  if (!confirm(plan.name + " PRO tarifini " + fmt(plan.price_uzs) + " UZS ga tanlaysizmi?")) return;
+  window.proPurchasePending = true;
+  try {
+    var payment = await apiRequest("/api/payments/create", {
+      method: "POST",
+      body: JSON.stringify({ planId: planId })
+    });
+    selectedPayment = { id: payment.paymentId, plan: plan, amount: payment.amountUzs };
+    var details = await apiRequest("/api/payment-details");
+    if (!details.configured) throw new Error("Administrator to‘lov rekvizitlarini sozlamagan.");
+    $("payment-plan-summary").textContent = plan.name + " · " + fmt(payment.amountUzs) + " UZS · " + plan.duration_months + " oy";
+    $("payment-details").innerHTML = '<div><b>' + escape(details.bank) + '</b></div><div style="font-size:20px;font-weight:800;letter-spacing:.5px;margin:6px 0">' +
+      escape(details.account) + '</div><div>' + escape(details.accountName) + '</div>' +
+      (details.instructions ? '<p style="margin-top:8px">' + escape(details.instructions) + '</p>' : '') +
+      '<p style="margin-top:8px">To‘lov summasi: <b>' + fmt(payment.amountUzs) + ' UZS</b></p>';
+    $("receipt-reference").value = "";
+    $("payment-receipt").value = "";
+    $("payment-flow").classList.remove("hidden");
+    $("payment-flow").scrollIntoView({ behavior: "smooth", block: "center" });
+    toast("To‘lov so‘rovi yaratildi. To‘lovdan so‘ng chekni yuboring.", "success");
+  } catch (error) {
+    toast(error.message, "error");
+  } finally {
+    window.proPurchasePending = false;
+  }
+}
+
+async function submitReceipt() {
+  if (!selectedPayment) return toast("Avval PRO tarifini tanlang.", "error");
+  var file = $("payment-receipt").files && $("payment-receipt").files[0];
+  var reference = $("receipt-reference").value.trim();
+  if (!reference) return toast("To‘lov izohi yoki tranzaksiya raqamini kiriting.", "error");
+  if (!file) return toast("To‘lov chekini rasm sifatida biriktiring.", "error");
+  if (file.size > 5 * 1024 * 1024) return toast("Rasm 5 MB dan oshmasligi kerak.", "error");
+  if (["image/jpeg", "image/png", "image/webp"].indexOf(file.type) < 0) {
+    return toast("JPG, PNG yoki WebP rasm tanlang.", "error");
+  }
+  var button = $("send-receipt-button");
+  button.disabled = true;
+  button.textContent = "Yuborilmoqda…";
+  var form = new FormData();
+  form.append("receipt", file);
+  form.append("reference", reference);
+  try {
+    await apiRequest("/api/payments/" + encodeURIComponent(selectedPayment.id) + "/receipt", {
+      method: "POST",
+      body: form
+    });
+    selectedPayment = null;
+    $("payment-flow").classList.add("hidden");
+    await loadNotifications();
+    toast("Chek yuborildi. Tasdiq administrator tekshiruvidan so‘ng beriladi.", "success");
+  } catch (error) {
+    toast(error.message, "error");
+  } finally {
+    button.disabled = false;
+    button.textContent = "Chekni yuborish";
+  }
+}
+
+async function adminSubscription(action) {
+  var telegramId = Number($("admin-telegram-id").value);
+  var months = Number($("admin-months").value);
+  if (!Number.isSafeInteger(telegramId) || telegramId <= 0) return toast("Telegram ID kiriting.", "error");
+  if (action === "revoke" && !confirm("Ushbu foydalanuvchining PRO obunasini bekor qilasizmi?")) return;
+  var endpoint = action === "revoke" ? "/api/admin/subscriptions/revoke" :
+    action === "extend" ? "/api/admin/subscriptions/extend" : "/api/admin/subscriptions/grant";
+  var body = { telegramId: telegramId, months: months, promo: action === "promo" };
+  if (action === "revoke") body = { telegramId: telegramId };
+  try {
+    await apiRequest(endpoint, { method: "POST", body: JSON.stringify(body) });
+    toast(action === "revoke" ? "Obuna bekor qilindi." : "Obuna saqlandi.", "success");
+    await loadAdminPanel();
+    await loadProPage(true);
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+async function adminUpdatePlan(planId) {
+  var price = Number($("admin-price-" + planId).value);
+  var months = Number($("admin-duration-" + planId).value);
+  try {
+    await apiRequest("/api/admin/plans/" + encodeURIComponent(planId), {
+      method: "PATCH",
+      body: JSON.stringify({ priceUzs: price, durationMonths: months })
+    });
+    toast("Tarif yangilandi.", "success");
+    await loadProPage(true);
+    await loadAdminPanel();
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+async function loadAdminPanel() {
+  if (!currentUser && telegramInitData()) {
+    try { currentUser = await apiRequest("/api/auth", { method: "POST", body: "{}" }); }
+    catch (error) { return toast(error.message, "error"); }
+  }
+  if (!currentUser || !currentUser.isAdmin) return toast("Administrator ruxsati talab qilinadi.", "error");
+  try {
+    var results = await Promise.all([
+      apiRequest("/api/admin/stats"),
+      apiRequest("/api/admin/pro-users"),
+      apiRequest("/api/admin/payments"),
+      apiRequest("/api/plans"),
+      apiRequest("/api/admin/payment-details"),
+      apiRequest("/api/admin/ai-settings"),
+      apiRequest("/api/admin/system-settings"),
+      apiRequest("/api/admin/categories")
+    ]);
+    var stats = results[0], users = results[1], payments = results[2], plans = results[3],
+      details = results[4], aiSettings = results[5], systemSettings = results[6], categories = results[7];
+    $("admin-user-count").textContent = fmt(stats.userCount);
+    $("admin-active-count").textContent = fmt(stats.activeUserCount);
+    $("admin-pro-count").textContent = fmt(stats.proCount);
+    $("admin-review-count").textContent = fmt(stats.reviewPayments);
+    $("admin-pending-count").textContent = fmt(stats.pendingPayments);
+    $("admin-rejected-count").textContent = fmt(stats.rejectedPayments);
+    $("admin-approved-count").textContent = fmt(stats.approvedPayments);
+    $("admin-revenue").textContent = fmt(stats.totalRevenueUzs);
+    $("admin-review-badge").textContent = fmt(stats.reviewPayments) + " ta";
+    $("manual-bank").value = details.bank || "";
+    $("manual-account").value = details.account || "";
+    $("manual-account-name").value = details.accountName || "";
+    $("manual-instructions").value = details.instructions || "";
+    $("admin-ai-enabled").checked = aiSettings.enabled;
+    $("admin-ai-prompt").value = aiSettings.systemPrompt || "";
+    $("admin-ai-provider-state").textContent = aiSettings.providerConfigured
+      ? "AI provayder backend muhitida sozlangan."
+      : "AI_API_KEY server muhitida kiritilmaguncha chat ishlamaydi.";
+    $("admin-notifications-enabled").checked = systemSettings.notificationsEnabled;
+    $("admin-support-url").value = systemSettings.supportUrl || "";
+    $("admin-support-message").value = systemSettings.supportMessage || "";
+    $("admin-expense-categories").value = categories.expense.map(function(item) { return item.v; }).join("\n");
+    $("admin-income-categories").value = categories.income.map(function(item) { return item.v; }).join("\n");
+
+    var planHtml = "";
+    for (var i = 0; i < plans.length; i++) {
+      var plan = plans[i];
+      planHtml += '<div class="admin-list-item"><b>' + escape(plan.name) + '</b><div class="tx-meta">Narx va obuna muddati</div>' +
+        '<input class="input" type="number" id="admin-price-' + escape(plan.id) +
+        '" value="' + Number(plan.price_uzs) + '" min="1000" aria-label="Narx">' +
+        '<input class="input" type="number" id="admin-duration-' + escape(plan.id) +
+        '" value="' + Number(plan.duration_months) + '" min="1" max="36" aria-label="Muddat (oy)">' +
+        '<button class="btn" onclick="adminUpdatePlan(\'' + escape(plan.id) +
+        '\')">Tarifni saqlash</button></div>';
+    }
+    $("admin-plans").innerHTML = planHtml || '<div class="admin-list-item">Faol tarif yo‘q</div>';
+
+    $("admin-users").innerHTML = users.length ? users.map(function(item) {
+      var user = item.user || {};
+      return '<div class="admin-list-item">' + escape(user.first_name || "Foydalanuvchi") +
+        ' · ID ' + Number(item.user_telegram_id) + ' · ' + formatDate(item.expires_at) +
+        ' gacha</div>';
+    }).join("") : '<div class="admin-list-item">Faol PRO obunalar yo‘q</div>';
+    $("admin-recent-users").innerHTML = stats.users.length ? stats.users.map(function(user) {
+      return '<div class="admin-list-item"><b>' + escape(user.first_name || "Foydalanuvchi") +
+        '</b><div class="tx-meta">ID ' + Number(user.telegram_id) + ' · So‘nggi faollik ' +
+        formatDate(user.last_active_at) + ' · ' + (user.is_pro ? "PRO" : "FREE") + '</div></div>';
+    }).join("") : '<div class="admin-list-item">Foydalanuvchilar hali yo‘q</div>';
+
+    $("admin-payments").innerHTML = payments.length ? payments.map(function(item) {
+      var statusText = item.status === "review" ? "Tekshiruvda" :
+        item.status === "paid" ? "Tasdiqlangan" :
+          item.status === "rejected" ? "Rad etilgan" :
+            item.status === "pending" ? "Chek kutilmoqda" : escape(item.status);
+      var reviewControls = item.status === "review"
+        ? '<div class="payment-actions"><button class="btn" onclick="reviewPayment(\'' + item.id + '\',\'approve\')">Tasdiqlash</button><button class="btn btn-ghost" onclick="reviewPayment(\'' + item.id + '\',\'reject\')">Rad etish</button></div>'
+        : "";
+      var receipt = item.receiptUrl
+        ? '<a href="' + escape(item.receiptUrl) + '" target="_blank" rel="noopener noreferrer">Chek rasmini ko‘rish</a>'
+        : "";
+      return '<article class="admin-list-item"><div style="display:flex;justify-content:space-between;gap:8px"><b>' +
+        fmt(item.amount_uzs) + ' UZS · ' + Number(item.duration_months) + ' oy</b><span class="status-chip">' +
+        statusText + '</span></div><div class="tx-meta">ID ' + Number(item.user_telegram_id) + ' · ' +
+        formatDate(item.created_at) + ' · ' + escape(item.provider.toUpperCase()) + '</div>' +
+        (item.receipt_reference ? '<div class="tx-meta">To‘lov raqami: ' + escape(item.receipt_reference) + '</div>' : '') +
+        receipt + (item.receiptUrl ? '<img class="receipt-image" src="' + escape(item.receiptUrl) + '" alt="Foydalanuvchi yuborgan chek rasmi" loading="lazy">' : '') +
+        reviewControls + '</article>';
+    }).join("") : '<div class="empty"><div class="empty-icon">◷</div><div class="empty-title">To‘lovlar topilmadi</div></div>';
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+async function reviewPayment(paymentId, action) {
+  var isApprove = action === "approve";
+  if (!confirm(isApprove ? "Chekni tekshirdingizmi? PRO obunasi tasdiqlanadi." : "Ushbu to‘lovni rad etasizmi?")) return;
+  var reason = isApprove ? "" : (prompt("Rad etish sababi (ixtiyoriy):") || "");
+  try {
+    await apiRequest("/api/admin/payments/" + encodeURIComponent(paymentId) + "/" + action, {
+      method: "POST",
+      body: JSON.stringify({ reason: reason })
+    });
+    toast(isApprove ? "To‘lov tasdiqlandi va PRO faollashdi." : "To‘lov rad etildi.", "success");
+    await loadAdminPanel();
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+async function savePaymentDetails() {
+  var details = {
+    bank: $("manual-bank").value.trim(),
+    account: $("manual-account").value.trim(),
+    accountName: $("manual-account-name").value.trim(),
+    instructions: $("manual-instructions").value.trim()
+  };
+  try {
+    await apiRequest("/api/admin/payment-details", { method: "PUT", body: JSON.stringify(details) });
+    toast("To‘lov rekvizitlari saqlandi.", "success");
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+async function saveAiSettings() {
+  var promptText = $("admin-ai-prompt").value.trim();
+  if (!promptText || promptText.length > 2000) return toast("AI ko‘rsatmasi 1–2 000 belgi bo‘lishi kerak.", "error");
+  try {
+    await apiRequest("/api/admin/ai-settings", {
+      method: "PUT",
+      body: JSON.stringify({ enabled: $("admin-ai-enabled").checked, systemPrompt: promptText })
+    });
+    toast("AI sozlamalari saqlandi.", "success");
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+async function saveSystemSettings() {
+  try {
+    await apiRequest("/api/admin/system-settings", {
+      method: "PUT",
+      body: JSON.stringify({
+        notificationsEnabled: $("admin-notifications-enabled").checked,
+        supportUrl: $("admin-support-url").value.trim(),
+        supportMessage: $("admin-support-message").value.trim()
+      })
+    });
+    toast("Tizim sozlamalari saqlandi.", "success");
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+function categoriesFromTextarea(id, current, type) {
+  var names = $(id).value.split(/\r?\n/).map(function(name) { return name.trim(); }).filter(Boolean);
+  return names.map(function(name) {
+    var existing = current.find(function(item) { return item.v.toLowerCase() === name.toLowerCase(); });
+    return { v: name, e: existing ? existing.e : (type === "income" ? "＋" : "◇") };
+  });
+}
+
+async function saveAdminCategories() {
+  var categories = {
+    expense: categoriesFromTextarea("admin-expense-categories", KAT_EXPENSE, "expense"),
+    income: categoriesFromTextarea("admin-income-categories", KAT_INCOME, "income")
+  };
+  if (categories.expense.length < 1 || categories.income.length < 1 ||
+      categories.expense.length > 30 || categories.income.length > 30) {
+    return toast("Har bir tur uchun 1–30 ta kategoriya kiriting.", "error");
+  }
+  try {
+    var result = await apiRequest("/api/admin/categories", {
+      method: "PUT",
+      body: JSON.stringify(categories)
+    });
+    KAT_EXPENSE = result.categories.expense;
+    KAT_INCOME = result.categories.income;
+    setType(currentType);
+    toast("Kategoriyalar yangilandi.", "success");
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+async function sendBroadcast() {
+  var message = $("admin-broadcast").value.trim();
+  if (!message) return toast("Xabar matnini kiriting.", "error");
+  if (!confirm("Xabar barcha bot foydalanuvchilariga yuborilsinmi?")) return;
+  try {
+    var result = await apiRequest("/api/admin/broadcast", {
+      method: "POST",
+      body: JSON.stringify({ message: message })
+    });
+    $("admin-broadcast").value = "";
+    toast("Yuborildi: " + result.sent + " · Xatolik: " + result.failed, result.failed ? "error" : "success");
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+function adminScroll(id) {
+  var target = $(id);
+  if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function loadNotifications() {
+  var container = $("user-payments");
+  if (!container) return;
+  if (!telegramInitData()) {
+    container.innerHTML = '<div class="admin-list-item">To‘lov tarixini ko‘rish uchun Telegram ilovasida oching.</div>';
+    return;
+  }
+  try {
+    userPaymentHistory = await apiRequest("/api/payments/history");
+    container.innerHTML = userPaymentHistory.length ? userPaymentHistory.map(function(item) {
+      var state = item.status === "review" ? "Administrator tekshirmoqda" :
+        item.status === "paid" ? "Tasdiqlangan · PRO faollashtirilgan" :
+          item.status === "rejected" ? "Rad etilgan" :
+            item.status === "pending" ? "To‘lov cheki yuborilmagan" : item.status;
+      return '<div class="admin-list-item"><div style="display:flex;justify-content:space-between;gap:8px"><b>' +
+        fmt(item.amount_uzs) + ' UZS · ' + Number(item.duration_months) + ' oy</b><span class="status-chip">' +
+        escape(state) + '</span></div><div class="tx-meta">' + formatDate(item.created_at) + '</div></div>';
+    }).join("") : '<div class="empty"><div class="empty-title">Hozircha to‘lovlar yo‘q</div><div class="empty-desc">PRO xarid so‘rovlari shu yerda ko‘rinadi.</div></div>';
+  } catch (error) {
+    container.textContent = error.message;
+    toast(error.message, "error");
+  }
+}
+
+// ==========================================
+// 8. ISHGA TUSHIRISH
+// ==========================================
+window.onload = function() {
+  if (localStorage.getItem("theme") === "light") document.body.classList.remove("dark");
+  else document.body.classList.add("dark");
+  var h = new Date().getHours();
+  var greet = h < 6 ? "Xayrli tun" : h < 12 ? "Xayrli tong" : h < 18 ? "Xayrli kun" : "Xayrli kech";
+  $("greeting").textContent = greet;
+  setType("expense");
+  if (telegramInitData()) {
+    setAccountSyncStatus("loading", "Telegram hisobingiz va serverdagi moliyaviy ma’lumotlar sinxronlanmoqda…");
+  } else if (isTelegramWebApp()) {
+    setAccountSyncStatus("error", "Telegram sessiyasi aniqlanmadi. Web App’ni bot ichida qayta oching.");
+  } else {
+    setAccountSyncStatus("guest", "");
+    yangila();
+  }
+  $("ai-input").addEventListener("keydown", function(event) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      aiSend();
+    }
+  });
+  (async function bootstrap() {
+    if (telegramInitData()) {
+      try {
+        currentUser = await apiRequest("/api/auth", { method: "POST", body: "{}" });
+        try { await loadCategories(); }
+        catch (categoryError) { toast("Kategoriyalar yuklanmadi: " + categoryError.message, "error"); }
+        await syncTransactions();
+        var subscription = await apiRequest("/api/subscription/status");
+        subscriptionIsPro = Boolean(subscription.isPro);
+        setAccountSyncStatus("ready", "");
+        renderProfile();
+        yangila();
+      } catch (error) {
+        setAccountSyncStatus("error", "Server bilan sinxronlash amalga oshmadi: " + error.message);
+        toast("Hisob bilan sinxronlash amalga oshmadi: " + error.message, "error");
+      }
+    }
+    renderProfile();
+    await loadProPage(true);
+  })();
+};
+</script>
+</body>
+</html>
