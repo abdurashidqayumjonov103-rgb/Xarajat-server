@@ -9,7 +9,6 @@ const { createClient } = require('@supabase/supabase-js');
 const {
   aiUsageAllowed,
   safeEqual,
-  subscriptionIsActive,
   verifyClickSignature,
   verifyTelegramInitData
 } = require('./payments');
@@ -39,7 +38,7 @@ function asyncRoute(handler) {
   };
 }
 
-for (const method of ['get', 'post', 'patch', 'delete']) {
+for (const method of ['get', 'post', 'put', 'patch', 'delete']) {
   const registerRoute = app[method].bind(app);
   app[method] = function(path, ...handlers) {
     return registerRoute(path, ...handlers.map(handler =>
@@ -68,6 +67,12 @@ const DEFAULT_CATEGORIES = {
     { v: 'Qo‘shimcha', e: '➕' }, { v: 'Boshqa kirim', e: '📥' }
   ]
 };
+const DEFAULT_PLANS = [
+  { id: '1-month', name: '1 Oylik PRO', duration_months: 1, price_uzs: 14990, badge: 'Boshlang‘ich' },
+  { id: '3-month', name: '3 Oylik PRO', duration_months: 3, price_uzs: 44990, badge: 'Mashhur' },
+  { id: '6-month', name: '6 Oylik PRO', duration_months: 6, price_uzs: 89990, badge: 'Qulay' },
+  { id: '12-month', name: '1 Yillik PRO', duration_months: 12, price_uzs: 179990, badge: 'Eng foydali' }
+];
 const supabase = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
@@ -117,7 +122,10 @@ function enqueueAiRequest(isPro, operation) {
 }
 
 async function requestGemini(question, systemPrompt, signal) {
-  const model = process.env.AI_MODEL || 'gemini-3.8-flash';
+  const configuredModel = String(process.env.AI_MODEL || '').trim();
+  const model = !configuredModel || /^gemini-(?:1\.0|1\.5|pro(?:-|$))/i.test(configuredModel)
+    ? 'gemini-3.6-flash'
+    : configuredModel;
   const response = await fetch(
     'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent',
     {
@@ -136,8 +144,12 @@ async function requestGemini(question, systemPrompt, signal) {
   );
   const result = await response.json().catch(() => ({}));
   if (!response.ok) {
-    console.error('Gemini API javobi:', response.status);
-    throw new Error('Gemini API xatoligi');
+    const apiMessage = result.error && result.error.message
+      ? result.error.message
+      : 'Gemini API HTTP ' + response.status;
+    const error = new Error(apiMessage);
+    error.status = response.status;
+    throw error;
   }
   const parts = result.candidates && result.candidates[0] &&
     result.candidates[0].content && result.candidates[0].content.parts;
@@ -148,8 +160,95 @@ async function requestGemini(question, systemPrompt, signal) {
   return content.trim();
 }
 
+async function requestGeminiWithImage(image, mimeType, signal) {
+  const configuredModel = String(process.env.AI_MODEL || '').trim();
+  const model = !configuredModel || /^gemini-(?:1\.0|1\.5|pro(?:-|$))/i.test(configuredModel)
+    ? 'gemini-3.6-flash'
+    : configuredModel;
+  const prompt = [
+    'Rasmdagi do‘kon chekini o‘qing. Faqat bitta JSON obyekt qaytaring, izoh yoki markdown yozmang.',
+    'Shakl: {"storeName":string|null,"date":"YYYY-MM-DD"|null,"items":[{"name":string,"price":integer}],"total":integer|null}.',
+    'Mahsulotlarni alohida qatorda aniqlang, narxlarni UZSdagi butun son sifatida bering.',
+    'Jami summani chekdagi to‘lanadigan jami qiymatdan oling. Noaniq qiymatlarni taxmin qilmang; aniqlanmagan maydonni null yoki bo‘sh ro‘yxat qiling.'
+  ].join(' ');
+  const response = await fetch(
+    'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent',
+    {
+      method: 'POST',
+      headers: {
+        'x-goog-api-key': process.env.AI_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        contents: [{
+          role: 'user',
+          parts: [
+            { text: prompt },
+            { inlineData: { mimeType, data: image.toString('base64') } }
+          ]
+        }],
+        generationConfig: { maxOutputTokens: 1200, responseMimeType: 'application/json' }
+      }),
+      signal
+    }
+  );
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(result.error && result.error.message || 'Gemini Vision HTTP ' + response.status);
+    error.status = response.status;
+    throw error;
+  }
+  const parts = result.candidates && result.candidates[0] &&
+    result.candidates[0].content && result.candidates[0].content.parts;
+  const content = Array.isArray(parts)
+    ? parts.map(part => typeof part.text === 'string' ? part.text : '').filter(Boolean).join('\n')
+    : '';
+  if (!content.trim()) throw new Error('Gemini Vision bo‘sh javob qaytardi.');
+  return content.trim();
+}
+
+function parseReceiptVisionData(content) {
+  const jsonText = String(content || '').replace(/^```(?:json)?\s*|\s*```$/gi, '').trim();
+  const start = jsonText.indexOf('{');
+  const end = jsonText.lastIndexOf('}');
+  if (start < 0 || end <= start) throw new Error('Vision javobida JSON topilmadi.');
+  const parsed = JSON.parse(jsonText.slice(start, end + 1));
+  const amount = value => {
+    if (typeof value === 'number') return Number.isSafeInteger(value) && value >= 0 ? value : null;
+    if (typeof value !== 'string') return null;
+    const digits = value.replace(/\D/g, '');
+    const result = Number(digits);
+    return digits && Number.isSafeInteger(result) ? result : null;
+  };
+  const items = (Array.isArray(parsed.items) ? parsed.items : [])
+    .slice(0, 100)
+    .map(item => ({
+      name: String(item && (item.name || item.title) || '').trim().slice(0, 100),
+      price: amount(item && (item.price != null ? item.price : item.amount))
+    }))
+    .filter(item => item.name && item.price > 0);
+  const total = amount(parsed.total != null ? parsed.total : parsed.totalAmount);
+  const result = {
+    storeName: String(parsed.storeName || parsed.store_name || '').trim().slice(0, 100) || null,
+    date: String(parsed.date || parsed.purchaseDate || '').trim().slice(0, 30) || null,
+    items,
+    total: total != null ? total : items.reduce((sum, item) => sum + item.price, 0) || null
+  };
+  if (!result.storeName && !result.date && !result.items.length && result.total == null) {
+    throw new Error('Chekdan ma’lumot aniqlanmadi.');
+  }
+  return result;
+}
+
 function sendError(res, status, message) {
   return res.status(status).json({ error: message });
+}
+
+function formatSubscriptionDate(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) throw new Error('Obuna tugash sanasi noto‘g‘ri.');
+  return String(date.getUTCDate()).padStart(2, '0') + '.' +
+    String(date.getUTCMonth() + 1).padStart(2, '0') + '.' + date.getUTCFullYear();
 }
 
 function requireDatabase(req, res, next) {
@@ -187,14 +286,14 @@ async function loadUser(telegramId) {
   const { data, error } = await supabase
     .from('users')
     .upsert({ telegram_id: telegramId, last_active_at: new Date().toISOString() }, { onConflict: 'telegram_id' })
-    .select('id, telegram_id, first_name, username, is_pro, pro_expires, created_at')
+    .select('id, telegram_id, first_name, username, is_pro, pro_status, pro_until, pro_expires, pro_expires_at, created_at')
     .maybeSingle();
   if (error) throw error;
   if (data) return data;
 
   const result = await supabase
     .from('users')
-    .select('id, telegram_id, first_name, username, is_pro, pro_expires, created_at')
+    .select('id, telegram_id, first_name, username, is_pro, pro_status, pro_until, pro_expires, pro_expires_at, created_at')
     .eq('telegram_id', telegramId)
     .single();
   if (result.error) throw result.error;
@@ -213,6 +312,21 @@ async function requireTelegram(req, res, next) {
     console.error('Foydalanuvchini tekshirish xatosi:', error.message);
     return sendError(res, 503, 'Foydalanuvchi ma’lumotlarini yuklab bo‘lmadi.');
   }
+}
+
+function hasActiveReceiptPro(user, now = new Date()) {
+  if (!user || user.is_pro !== true) return false;
+  const expiryValue = user.pro_expires_at || user.pro_until || user.pro_expires;
+  if (!expiryValue) return true;
+  const expiry = new Date(expiryValue).getTime();
+  return Number.isFinite(expiry) && expiry > now.getTime();
+}
+
+function requireReceiptPro(req, res, next) {
+  if (!hasActiveReceiptPro(req.user)) {
+    return sendError(res, 403, 'Chek skaneri faqat PRO foydalanuvchilar uchun');
+  }
+  return next();
 }
 
 function isAdminRequest(req) {
@@ -411,13 +525,12 @@ app.post('/api/auth', requireDatabase, async (req, res) => {
         username: username || null,
         last_active_at: new Date().toISOString()
       }, { onConflict: 'telegram_id' })
-      .select('id, telegram_id, first_name, username, is_pro, pro_expires, created_at')
+      .select('id, telegram_id, first_name, username, is_pro, pro_status, pro_until, pro_expires, pro_expires_at, created_at')
       .single();
     if (error) throw error;
 
     const now = new Date();
-    const expiresAt = user.pro_expires ? new Date(user.pro_expires) : null;
-    const isPro = Boolean(expiresAt && expiresAt > now);
+    const isPro = hasActiveReceiptPro(user, now);
     const trialEndsAt = new Date(new Date(user.created_at).getTime() + 7 * 86400000);
     return res.json({
       ...user,
@@ -432,17 +545,20 @@ app.post('/api/auth', requireDatabase, async (req, res) => {
   }
 });
 
-app.get('/api/plans', requireDatabase, async (req, res) => {
-  const { data, error } = await supabase
-    .from('subscription_plans')
-    .select('id, name, duration_months, price_uzs')
-    .eq('active', true)
-    .order('duration_months');
-  if (error) {
+app.get('/api/plans', async (req, res) => {
+  if (!supabase) return res.json(DEFAULT_PLANS);
+  try {
+    const { data, error } = await supabase
+      .from('subscription_plans')
+      .select('id, name, duration_months, price_uzs')
+      .eq('active', true)
+      .order('duration_months');
+    if (error) throw error;
+    return res.json(Array.isArray(data) && data.length ? data : DEFAULT_PLANS);
+  } catch (error) {
     console.error('PRO tariflarini yuklab olish xatosi:', error.message);
-    return sendError(res, 503, 'Tariflarni yuklab bo‘lmadi.');
+    return res.json(DEFAULT_PLANS);
   }
-  return res.json(data);
 });
 
 app.get('/api/payment-details', requireDatabase, async (req, res) => {
@@ -505,26 +621,47 @@ app.get('/api/subscription/status', requireDatabase, requireTelegram, async (req
   try {
     const { data: subscription, error } = await supabase
       .from('subscriptions')
-      .select('status, starts_at, expires_at, source')
+      .select('status, starts_at, expires_at, ends_at, source')
       .eq('user_telegram_id', req.user.telegram_id)
       .maybeSingle();
     if (error) throw error;
-    const expiresAt = subscription ? new Date(subscription.expires_at) : null;
-    const isPro = subscriptionIsActive(subscription);
-    if (subscription && subscription.status === 'active' && !isPro) {
+    const now = new Date();
+    const subscriptionExpiryValue = subscription && (subscription.expires_at || subscription.ends_at);
+    const subscriptionExpiry = subscriptionExpiryValue ? new Date(subscriptionExpiryValue) : null;
+    const userExpiryValue = req.user.pro_expires_at || req.user.pro_until || req.user.pro_expires;
+    const userExpiresAt = userExpiryValue ? new Date(userExpiryValue) : null;
+    const userIsActive = hasActiveReceiptPro(req.user, now);
+    const subscriptionIsCurrentlyActive = Boolean(
+      subscription && subscription.status === 'active' &&
+      subscriptionExpiry && Number.isFinite(subscriptionExpiry.getTime()) && subscriptionExpiry > now
+    );
+    const isPro = userIsActive;
+    const hasExpired = Boolean(
+      (userExpiresAt &&
+        Number.isFinite(userExpiresAt.getTime()) && userExpiresAt <= now) ||
+      (subscription && subscription.status === 'active' && subscriptionExpiry &&
+        Number.isFinite(subscriptionExpiry.getTime()) && subscriptionExpiry <= now)
+    );
+    if (subscription && subscription.status === 'active' && !subscriptionIsCurrentlyActive) {
       const { error: expireError } = await supabase.from('subscriptions')
         .update({ status: 'expired', updated_at: new Date().toISOString() })
         .eq('user_telegram_id', req.user.telegram_id);
       if (expireError) throw expireError;
-      await supabase.from('users').update({ is_pro: false, pro_expires: null })
-        .eq('telegram_id', req.user.telegram_id);
     }
+    if (req.user.is_pro === true && !userIsActive) {
+      const { error: userExpireError } = await supabase.from('users')
+        .update({ is_pro: false, pro_status: 'free' })
+        .eq('telegram_id', req.user.telegram_id);
+      if (userExpireError) throw userExpireError;
+    }
+    const expiresAt = userExpiresAt || (subscriptionIsCurrentlyActive ? subscriptionExpiry : null);
     return res.json({
       isPro,
-      status: isPro ? 'active' : (subscription ? subscription.status : 'free'),
-      startsAt: isPro ? subscription.starts_at : null,
-      expiresAt: isPro ? subscription.expires_at : null,
-      daysLeft: isPro ? Math.max(0, Math.ceil((expiresAt - new Date()) / 86400000)) : 0
+      status: isPro ? 'active' : (hasExpired ? 'expired' : 'free'),
+      expired: hasExpired,
+      startsAt: isPro && subscription ? subscription.starts_at : null,
+      expiresAt: expiresAt ? expiresAt.toISOString() : null,
+      daysLeft: isPro && expiresAt ? Math.max(0, Math.ceil((expiresAt - now) / 86400000)) : 0
     });
   } catch (error) {
     console.error('Obuna holati xatosi:', error.message);
@@ -532,20 +669,8 @@ app.get('/api/subscription/status', requireDatabase, requireTelegram, async (req
   }
 });
 
-app.post('/api/payments/create', requireDatabase, requireTelegram, async (req, res) => {
+app.post(['/api/payments/create', '/api/payments'], requireDatabase, requireTelegram, async (req, res) => {
   const planId = String(req.body.planId || '');
-  const { data: paymentDetails, error: settingsError } = await supabase.from('app_settings')
-    .select('value').eq('key', 'manual_payment_details').maybeSingle();
-  if (settingsError) return sendError(res, 503, 'To‘lov ma’lumotlarini tekshirib bo‘lmadi.');
-  try {
-    if (!paymentDetails || !JSON.parse(paymentDetails.value).account) {
-      return sendError(res, 503, 'Administrator to‘lov rekvizitlarini sozlamagan.');
-    }
-  } catch (error) {
-    console.error('To‘lov rekvizitlari JSON xatosi:', error.message);
-    return sendError(res, 503, 'To‘lov rekvizitlari noto‘g‘ri sozlangan.');
-  }
-
   try {
     const { data: plan, error: planError } = await supabase
       .from('subscription_plans')
@@ -565,6 +690,19 @@ app.post('/api/payments/create', requireDatabase, requireTelegram, async (req, r
     if (pendingError) throw pendingError;
     if (count >= 3) return sendError(res, 429, 'Kutilayotgan to‘lovlar limiti tugadi. Birozdan so‘ng urinib ko‘ring.');
 
+    let configuredDetails = {};
+    const { data: settingsRow, error: settingsError } = await supabase.from('app_settings')
+      .select('value').eq('key', 'manual_payment_details').maybeSingle();
+    if (settingsError) {
+      console.error('To‘lov rekvizitlarini tekshirish xatosi:', settingsError.message);
+    } else if (settingsRow) {
+      try {
+        configuredDetails = JSON.parse(settingsRow.value) || {};
+      } catch (settingsParseError) {
+        console.error('To‘lov rekvizitlari JSON xatosi:', settingsParseError.message);
+      }
+    }
+
     const { data: payment, error: insertError } = await supabase
       .from('payments')
       .insert({
@@ -573,12 +711,21 @@ app.post('/api/payments/create', requireDatabase, requireTelegram, async (req, r
         provider: 'manual',
         amount_uzs: plan.price_uzs,
         duration_months: plan.duration_months,
+        status: 'pending',
         expires_at: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString()
       })
       .select('id, amount_uzs, duration_months, provider')
       .single();
     if (insertError) throw insertError;
     return res.status(201).json({
+      ok: true,
+      payment_id: 'pay_' + Date.now(),
+      card_number: String(configuredDetails.account || process.env.PAYMENT_CARD || '9860 **** **** 0000').slice(0, 100),
+      card_holder: String(configuredDetails.accountName || process.env.PAYMENT_CARD_HOLDER || 'XARAJAT AI').slice(0, 100),
+      bank: String(configuredDetails.bank || '').slice(0, 100),
+      instructions: String(configuredDetails.instructions || '').slice(0, 1000),
+      amount: payment.amount_uzs,
+      message: 'To‘lovni amalga oshirib, chekni botga yuboring',
       paymentId: payment.id,
       provider: payment.provider,
       amountUzs: payment.amount_uzs,
@@ -648,6 +795,40 @@ app.post('/api/payments/:id/receipt', requireDatabase, requireTelegram, receiptU
   }
   return res.json({ ok: true, status: updated.status });
 });
+
+app.post('/api/receipts/scan', requireDatabase, requireTelegram, requireReceiptPro, receiptUpload.single('image'), async (req, res) => {
+  if (!req.file) return sendError(res, 400, 'Chek rasmini biriktiring.');
+  if (!receiptMimeMatches(req.file.buffer, req.file.mimetype)) {
+    return sendError(res, 400, 'Yuklangan fayl haqiqiy JPG, PNG yoki WebP rasm emas.');
+  }
+  if (!process.env.AI_API_KEY) return sendError(res, 503, 'Chekni AI orqali o‘qish serverda sozlanmagan.');
+  if (!checkAiRateLimit(req.user.telegram_id)) {
+    return sendError(res, 429, 'Chek skanerlash tezligi bo‘yicha limitga yetdingiz. Biroz kuting.');
+  }
+  const { data: aiEnabledSetting, error: aiSettingError } = await supabase.from('app_settings')
+    .select('value').eq('key', 'ai_enabled').maybeSingle();
+  if (aiSettingError) return sendError(res, 503, 'AI sozlamalarini tekshirib bo‘lmadi.');
+  if (aiEnabledSetting && aiEnabledSetting.value === 'false') {
+    return sendError(res, 503, 'AI xizmati administrator tomonidan vaqtincha o‘chirilgan.');
+  }
+
+  try {
+    const content = await enqueueAiRequest(Boolean(req.user.is_pro), async () => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 25000);
+      try {
+        return await requestGeminiWithImage(req.file.buffer, req.file.mimetype, controller.signal);
+      } finally {
+        clearTimeout(timeout);
+      }
+    });
+    return res.json(parseReceiptVisionData(content));
+  } catch (error) {
+    console.error('Chekni Vision orqali o‘qish xatosi:', error.message);
+    return sendError(res, error.name === 'AbortError' ? 504 : 502, 'Chek AI orqali o‘qilmadi.');
+  }
+});
+
 app.post('/api/ai/consume', requireDatabase, requireTelegram, async (req, res) => {
   if (!checkAiRateLimit(req.user.telegram_id)) {
     return sendError(res, 429, 'AI so‘rovlari tezligi bo‘yicha limitga yetdingiz. Biroz kuting.');
@@ -706,7 +887,7 @@ app.post('/api/ai/chat', requireDatabase, requireTelegram, async (req, res) => {
       limit: usage.limit
     });
   } catch (error) {
-    console.error('AI so‘rovi xatosi:', error.name === 'AbortError' ? 'timeout' : error.message);
+    console.error(error);
     return sendError(res, error.status || (error.name === 'AbortError' ? 504 : 502), 'AI xizmatiga ulanib bo‘lmadi.');
   }
 });
@@ -1065,7 +1246,8 @@ app.post('/api/admin/payments/:id/approve', requireDatabase, requireTelegram, re
   } else {
     await notifyTelegramUser(
       payment.user_telegram_id,
-      '✅ To‘lovingiz tasdiqlandi. Xarajat AI PRO obunangiz faollashtirildi.'
+      '✅ PRO obunangiz faollashtirildi! Amal qilish muddati: ' +
+        formatSubscriptionDate(data.expiresAt) + ' gacha'
     );
   }
   return res.json({ ok: true, expiresAt: data.expiresAt, alreadyProcessed: data.alreadyProcessed });
@@ -1081,8 +1263,8 @@ app.post('/api/admin/payments/:id/reject', requireDatabase, requireTelegram, req
     .select('id, user_telegram_id, status, provider, provider_data')
     .eq('id', paymentId).maybeSingle();
   if (findError) return sendError(res, 503, 'To‘lov holatini tekshirib bo‘lmadi.');
-  if (!payment || payment.provider !== 'manual' || payment.status !== 'review') {
-    return sendError(res, 409, 'Faqat tekshiruvdagi qo‘lda to‘lovni rad etish mumkin.');
+  if (!payment || payment.provider !== 'manual' || !['pending', 'review'].includes(payment.status)) {
+    return sendError(res, 409, 'Faqat ochiq qo‘lda to‘lovni rad etish mumkin.');
   }
   const { data: updated, error } = await supabase.from('payments')
     .update({
@@ -1093,7 +1275,7 @@ app.post('/api/admin/payments/:id/reject', requireDatabase, requireTelegram, req
         rejection_reason: reason
       })
     })
-    .eq('id', paymentId).eq('status', 'review')
+    .eq('id', paymentId).in('status', ['pending', 'review'])
     .select('id').maybeSingle();
   if (error) return sendError(res, 503, 'To‘lovni rad etib bo‘lmadi.');
   if (!updated) return sendError(res, 409, 'To‘lov holati boshqa administrator tomonidan o‘zgartirilgan.');
@@ -1151,8 +1333,6 @@ app.get('/api/admin/ai-settings', requireDatabase, requireTelegram, requireAdmin
     .select('key, value').in('key', ['ai_system_prompt', 'ai_enabled']);
   if (error) return sendError(res, 503, 'AI sozlamalarini yuklab bo‘lmadi.');
   const settings = Object.fromEntries(data.map(item => [item.key, item.value]));
-  const supportUrl = validateHttpsUrl(settings.support_url || '');
-  if (supportUrl === null) return sendError(res, 503, 'Saqlangan yordam havolasi noto‘g‘ri.');
   return res.json({
     enabled: settings.ai_enabled !== 'false',
     systemPrompt: settings.ai_system_prompt || DEFAULT_AI_SYSTEM_PROMPT,
@@ -1220,6 +1400,8 @@ app.get('/api/admin/system-settings', requireDatabase, requireTelegram, requireA
   const { data, error } = await supabase.from('app_settings').select('key, value').in('key', keys);
   if (error) return sendError(res, 503, 'Tizim sozlamalarini yuklab bo‘lmadi.');
   const settings = Object.fromEntries(data.map(item => [item.key, item.value]));
+  const supportUrl = validateHttpsUrl(settings.support_url || '');
+  if (supportUrl === null) return sendError(res, 503, 'Saqlangan yordam havolasi noto‘g‘ri.');
   return res.json({
     notificationsEnabled: settings.notifications_enabled !== 'false',
     supportUrl,
@@ -1348,7 +1530,7 @@ app.get('/api/admin/stats', requireDatabase, requireTelegram, requireAdmin, asyn
       supabase.from('payments').select('*', { count: 'exact', head: true }).eq('status', 'review'),
       supabase.from('payments').select('*', { count: 'exact', head: true }).eq('status', 'rejected'),
       supabase.from('payments').select('*', { count: 'exact', head: true }).eq('status', 'paid'),
-      supabase.from('users').select('telegram_id, first_name, username, is_pro, pro_expires, last_active_at, created_at')
+      supabase.from('users').select('telegram_id, first_name, username, is_pro, pro_expires, pro_expires_at, last_active_at, created_at')
         .order('created_at', { ascending: false }).limit(20),
       supabase.rpc('subscription_revenue')
     ]);
@@ -1504,6 +1686,11 @@ module.exports = {
   checkPaymeAuth,
   enqueueAiRequest,
   getTelegramIdentity,
+  hasActiveReceiptPro,
+  requireReceiptPro,
   requestGemini,
+  requestGeminiWithImage,
+  parseReceiptVisionData,
   receiptMimeMatches
 };
+require('./bot.js');

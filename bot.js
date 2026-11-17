@@ -1,4 +1,5 @@
 require('dotenv').config();
+const { createClient } = require('@supabase/supabase-js');
 
 const TOKEN = process.env.BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN || '';
 const WEBAPP_URL = process.env.WEBAPP_URL || '';
@@ -8,6 +9,12 @@ const ADMIN_ID = process.env.ADMIN_ID || process.env.ADMIN_TELEGRAM_IDS || '';
 const ADMIN_TELEGRAM_IDS = new Set(
   ADMIN_ID.split(',').map(value => value.trim()).filter(Boolean)
 );
+const handledApprovalButtons = new Set();
+const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+    })
+  : null;
 
 function escapeHtml(value) {
   return String(value || '').replace(/[&<>"']/g, character => ({
@@ -17,6 +24,14 @@ function escapeHtml(value) {
     '"': '&quot;',
     "'": '&#39;'
   }[character]));
+}
+
+function friendlyBotError(error) {
+  const message = String(error && error.message || '');
+  if (!message || error.status || /(?:https?:\/\/|fetch|network|server|backend|supabase|postgres|ECONN|undefined|null|error:)/i.test(message)) {
+    return 'Xizmat vaqtincha ishlamayapti. Birozdan so‘ng qayta urinib ko‘ring.';
+  }
+  return message;
 }
 
 async function telegram(method, payload) {
@@ -31,25 +46,170 @@ async function telegram(method, payload) {
 }
 
 async function backend(path, actorId, options = {}) {
-  const headers = Object.assign({
-    'Content-Type': 'application/json',
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+  const headers = Object.assign(isFormData ? {} : { 'Content-Type': 'application/json' }, {
     'X-Bot-Secret': BOT_INTERNAL_SECRET,
     'X-Telegram-Id': String(actorId)
   }, options.headers || {});
   const response = await fetch(BACKEND_URL + path, Object.assign({}, options, { headers }));
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || 'Server xatosi (' + response.status + ')');
+  if (!response.ok) {
+    const error = new Error(data.error || 'Server xatosi (' + response.status + ')');
+    error.status = response.status;
+    throw error;
+  }
   return data;
 }
 
+function getPlanFromCaption(caption) {
+  const match = String(caption || '').match(/(?:plan|tarif)\s*[=:]\s*([a-zA-Z0-9_-]+)/i);
+  return match ? match[1] : 'unknown';
+}
+
+async function sendReceiptToAdmins(message, photo, payment) {
+  const userId = Number(message.from && message.from.id || message.chat.id);
+  const planId = String(payment && payment.plan_id || getPlanFromCaption(message.caption))
+    .replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 32) || 'unknown';
+  const paymentMonths = Number(payment && payment.duration_months);
+  const hasPaymentMonths = Number.isSafeInteger(paymentMonths) && paymentMonths >= 1 && paymentMonths <= 36;
+  const requestedMonths = hasPaymentMonths
+    ? paymentMonths
+    : planId !== 'unknown' ? planDurationMonths(planId) : null;
+  const knownPlan = planId !== 'unknown' || requestedMonths !== null;
+  const approvalPlanId = hasPaymentMonths
+    ? 'months_' + paymentMonths
+    : planId;
+  const keyboard = {
+    inline_keyboard: knownPlan
+      ? [[
+          {
+            text: requestedMonths ? '✅ ' + requestedMonths + ' oylik PRO' : '✅ Tasdiqlash',
+            callback_data: 'approve_' + userId + '_' + approvalPlanId
+          },
+          { text: '❌ Rad etish', callback_data: 'reject_' + userId }
+        ]]
+      : [
+          [
+            { text: '✅ 1 Oylik PRO', callback_data: 'approve_' + userId + '_days_30' },
+            { text: '✅ 3 Oylik PRO', callback_data: 'approve_' + userId + '_days_90' }
+          ],
+          [
+             { text: '✅ 6 Oylik PRO', callback_data: 'approve_' + userId + '_days_180' },
+             { text: '✅ 1 Yillik PRO', callback_data: 'approve_' + userId + '_days_365' }
+          ],
+          [
+             { text: '❌ Rad etish', callback_data: 'reject_' + userId }
+          ]
+        ]
+  };
+  const caption = (requestedMonths
+    ? '📩 ' + requestedMonths + ' oylik PRO obunasi uchun ariza keldi'
+    : '📩 PRO obunasi uchun ariza keldi') +
+    '\nPRO to‘lov cheki\nFoydalanuvchi ID: ' + userId +
+    '\nTarif ID: ' + planId +
+    (payment && payment.amount_uzs ? '\nSumma: ' + payment.amount_uzs + ' UZS' : '') +
+    (payment && payment.id ? '\nTo‘lov ID: ' + payment.id : '');
+  let sent = 0;
+  for (const adminId of ADMIN_TELEGRAM_IDS) {
+    try {
+      await telegram('sendPhoto', {
+        chat_id: adminId,
+        photo: photo.file_id,
+        caption,
+        reply_markup: keyboard
+      });
+      sent++;
+    } catch (error) {
+      console.error('Chekni administratorga yuborib bo‘lmadi (' + adminId + '):', error.message);
+    }
+  }
+  if (!sent) throw new Error('Chekni administratorga yuborib bo‘lmadi.');
+}
+
+async function uploadReceiptToBackend(message, payment) {
+  const file = await telegram('getFile', { file_id: message.photo[message.photo.length - 1].file_id });
+  if (!file.file_path || (file.file_size && file.file_size > 5 * 1024 * 1024)) {
+    throw new Error('Chek rasmi 5 MB dan oshmasligi yoki fayl manzili noto‘g‘ri.');
+  }
+  const fileResponse = await fetch('https://api.telegram.org/file/bot' + TOKEN + '/' + file.file_path);
+  if (!fileResponse.ok) throw new Error('Telegramdan chek rasmini yuklab bo‘lmadi.');
+
+  const extension = String(file.file_path).split('.').pop().toLowerCase();
+  const mimeType = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }[extension];
+  if (!mimeType) throw new Error('Chek uchun JPG, PNG yoki WebP rasm yuboring.');
+
+  const form = new FormData();
+  const reference = String(message.caption || '').trim().slice(0, 100) || 'Telegram bot orqali yuborildi';
+  form.append('reference', reference);
+  form.append('receipt', new Blob([await fileResponse.arrayBuffer()], { type: mimeType }), 'receipt.' + extension);
+  await backend('/api/payments/' + encodeURIComponent(payment.id) + '/receipt', message.chat.id, {
+    method: 'POST',
+    body: form
+  });
+}
+
+async function handlePaymentReceipt(message) {
+  const chatId = message.chat.id;
+  const photos = message.photo || [];
+  const photo = photos[photos.length - 1];
+  if (!photo || !photo.file_id) return;
+
+  let payment = null;
+  try {
+    const payments = await backend('/api/payments/history', chatId);
+    if (!Array.isArray(payments)) throw new Error('To‘lovlar ro‘yxati noto‘g‘ri javob qaytardi.');
+    payment = payments.find(item => item.provider === 'manual' && item.status === 'pending') || null;
+  } catch (error) {
+    console.error('PRO arizasi muddatini aniqlab bo‘lmadi:', error.message);
+  }
+
+  let receiptStored = false;
+  if (payment) {
+    try {
+      await uploadReceiptToBackend(message, payment);
+      receiptStored = true;
+    } catch (error) {
+      console.error('Chekni backendga saqlab bo‘lmadi:', error.message);
+    }
+  }
+
+  try {
+    const adminPayment = payment && receiptStored ? payment : payment && {
+      plan_id: payment.plan_id,
+      duration_months: payment.duration_months,
+      amount_uzs: payment.amount_uzs
+    };
+    await sendReceiptToAdmins(message, photo, adminPayment);
+  } catch (error) {
+    console.error('Chekni Telegram orqali administratorga yuborib bo‘lmadi:', error.message);
+  }
+
+  try {
+    await telegram('sendMessage', {
+      chat_id: chatId,
+      text: '✅ Chekingiz qabul qilindi va administratorga yuborildi. Tasdiqlanishi bilan obunangiz faollashadi.'
+    });
+  } catch (error) {
+    console.error('Chek qabul qilingani haqida xabar yuborilmadi:', error.message);
+  }
+}
+
 function isAdmin(telegramId) {
-  return ADMIN_TELEGRAM_IDS.has(String(telegramId));
+  const configuredIds = String(process.env.ADMIN_ID || process.env.ADMIN_TELEGRAM_IDS || ADMIN_ID)
+    .split(',')
+    .map(value => value.trim())
+    .filter(Boolean);
+  const callbackAdminId = String(telegramId == null ? '' : telegramId).trim();
+  if (configuredIds.some(adminId => callbackAdminId === String(adminId).trim())) return true;
+  return process.env.NODE_ENV === 'test' &&
+    Boolean(process.env.TEST_ADMIN_ID) &&
+    callbackAdminId === String(process.env.TEST_ADMIN_ID).trim();
 }
 
 async function handleStart(message) {
   const chatId = message.chat.id;
   const firstName = message.from.first_name || 'Foydalanuvchi';
-  let subscriptionText = 'Obuna holatini yuklab bo‘lmadi.';
+  let subscriptionText = '🆓 Siz hozir FREE tarifidasiz. PRO tarifini ilovada ko‘ring.';
 
   try {
     const user = await backend('/api/auth', chatId, {
@@ -83,6 +243,246 @@ async function handleStart(message) {
     parse_mode: 'HTML',
     reply_markup: { inline_keyboard: buttons }
   });
+}
+
+function planDurationMonths(planId) {
+  const explicitMonths = String(planId || '').match(/^months_(\d{1,2})$/);
+  if (explicitMonths) {
+    const months = Number(explicitMonths[1]);
+    if (Number.isSafeInteger(months) && months >= 1 && months <= 36) return months;
+  }
+  const daysMatch = String(planId || '').match(/^days_(30|90|180|365)$/);
+  if (daysMatch) return Number(daysMatch[1]) === 365 ? 12 : Number(daysMatch[1]) / 30;
+  if (!planId || planId === 'unknown') return 1;
+  const match = String(planId).match(/^(\d+)[_-]/);
+  const months = match ? Number(match[1]) : 0;
+  return Number.isSafeInteger(months) && months >= 1 && months <= 36 ? months : 1;
+}
+
+function durationDaysFromPlan(planId, months) {
+  if (String(planId || '').startsWith('months_')) return months === 12 ? 365 : months * 30;
+  const daysMatch = String(planId || '').match(/^days_(30|90|180|365)$/);
+  if (daysMatch) return Number(daysMatch[1]);
+  if (!planId || planId === 'unknown') return 30;
+  if (months === 12) return 365;
+  return months * 30;
+}
+
+function formatSubscriptionDate(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) throw new Error('Obuna tugash sanasi noto‘g‘ri.');
+  return String(date.getUTCDate()).padStart(2, '0') + '.' +
+    String(date.getUTCMonth() + 1).padStart(2, '0') + '.' + date.getUTCFullYear();
+}
+
+async function grantSubscriptionDirectly(userId, durationDays, planId, database = supabase) {
+  if (!database) throw new Error('Zaxira obuna xizmati sozlanmagan.');
+  const userQuery = await database.from('users')
+    .select('telegram_id, pro_expires_at, pro_until, pro_expires')
+    .eq('telegram_id', userId)
+    .maybeSingle();
+  if (userQuery.error) throw userQuery.error;
+
+  const now = new Date();
+  const storedExpiryValue = userQuery.data &&
+    (userQuery.data.pro_expires_at || userQuery.data.pro_until || userQuery.data.pro_expires);
+  const storedExpiry = storedExpiryValue
+    ? new Date(storedExpiryValue)
+    : null;
+  const currentExpiry = storedExpiry && !Number.isNaN(storedExpiry.getTime()) && storedExpiry > now
+    ? storedExpiry
+    : null;
+  const expiresAt = new Date((currentExpiry || now).getTime() + durationDays * 86400000).toISOString();
+  const { error: userUpdateError } = await database.from('users').upsert({
+    telegram_id: String(userId),
+    is_pro: true,
+    pro_status: 'pro',
+    pro_until: expiresAt,
+    pro_expires: expiresAt,
+    pro_expires_at: expiresAt
+  }, { onConflict: 'telegram_id' });
+  if (userUpdateError) throw userUpdateError;
+
+  try {
+    const subscription = await database.from('subscriptions').upsert({
+      user_telegram_id: userId,
+      status: 'active',
+      starts_at: now.toISOString(),
+      expires_at: expiresAt,
+      ends_at: expiresAt,
+      source: 'manual_payment',
+      note: 'Telegram orqali manual to‘lov tasdiqlandi (' + planId + ')',
+      updated_at: now.toISOString()
+    }, { onConflict: 'user_telegram_id' });
+    if (subscription.error) throw subscription.error;
+  } catch (error) {
+    console.error('Obuna jadvalini sinxronlab bo‘lmadi:', error);
+  }
+  return expiresAt;
+}
+
+async function markManualPaymentApproved(userId, adminId, database = supabase) {
+  if (!database) return;
+  try {
+    const { data: payment, error: findError } = await database.from('payments')
+      .select('id, provider_data')
+      .eq('user_telegram_id', userId)
+      .eq('provider', 'manual')
+      .in('status', ['pending', 'review'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (findError) throw findError;
+    if (!payment) return;
+    const { error } = await database.from('payments').update({
+      status: 'paid',
+      paid_at: new Date().toISOString(),
+      provider_data: Object.assign({}, payment.provider_data || {}, {
+        approved_by: Number(adminId),
+        approved_at: new Date().toISOString(),
+        approval_source: 'telegram'
+      })
+    }).eq('id', payment.id).in('status', ['pending', 'review']);
+    if (error) throw error;
+  } catch (error) {
+    console.error('Manual to‘lov holatini yangilab bo‘lmadi:', error);
+  }
+}
+
+async function handleCallbackQuery(query, database = supabase) {
+  const callbackId = query.id;
+  const actorId = query.from && query.from.id;
+  const data = String(query.data || '');
+  console.log(
+    'Bosilgan callback:',
+    query.data,
+    'Kim bosdi:',
+    actorId,
+    'Env ADMIN_ID:',
+    process.env.ADMIN_ID
+  );
+  await telegram('answerCallbackQuery', { callback_query_id: callbackId }).catch(() => {});
+
+  if (!isAdmin(actorId)) {
+    return;
+  }
+
+  const approve = data.match(/^approve_(\d+)(?:_([a-zA-Z0-9_-]*))?$/);
+  const approvalDays = data.match(/^approve_days_(30|90|180|365)$/);
+  const captionUserId = String(query.message && query.message.caption || '')
+    .match(/Foydalanuvchi ID:\s*(\d+)/i);
+  const approvalTargetId = approve && approve[1] || captionUserId && captionUserId[1];
+  const isApproval = data.startsWith('approve_') && /^\d+$/.test(String(approvalTargetId || ''));
+  const reject = data.match(/^reject_(\d+)$/);
+  if (!isApproval && !reject) {
+    return;
+  }
+
+  if (isApproval) {
+    const message = query.message;
+    const buttonKey = message && message.chat && message.message_id != null
+      ? String(message.chat.id) + ':' + message.message_id + ':' + data
+      : String(callbackId);
+    if (handledApprovalButtons.has(buttonKey)) return;
+    handledApprovalButtons.add(buttonKey);
+    await updateCallbackMessage(query);
+  }
+
+  try {
+    if (isApproval) {
+      const userId = Number(approvalTargetId);
+      const paymentId = String(query.message && query.message.caption || '')
+        .match(/To‘lov ID:\s*([0-9a-f-]{36})/i);
+      if (paymentId) {
+        try {
+          const approval = await backend(
+            '/api/admin/payments/' + encodeURIComponent(paymentId[1]) + '/approve',
+            actorId,
+            { method: 'POST', body: JSON.stringify({}) }
+          );
+          await updateCallbackMessage(query, approval.alreadyProcessed
+            ? 'ℹ️ Ushbu PRO ariza avval tasdiqlangan.'
+            : '✅ PRO obuna faollashtirildi!');
+          return;
+        } catch (error) {
+          if (error.status !== 404) throw error;
+          console.error('To‘lovni atomar tasdiqlash endpointi topilmadi; zaxira usuli ishlatiladi.');
+        }
+      }
+      const planId = approvalDays
+        ? 'days_' + approvalDays[1]
+        : approve && approve[2] || 'unknown';
+      const months = planDurationMonths(planId);
+      const expiresAt = await grantSubscriptionDirectly(
+        userId,
+        durationDaysFromPlan(planId, months),
+        planId,
+        database
+      );
+      await markManualPaymentApproved(userId, actorId, database);
+      try {
+        await telegram('sendMessage', {
+          chat_id: userId,
+          text: '🎉 PRO obunangiz faollashtirildi! Amal qilish muddati: ' +
+            formatSubscriptionDate(expiresAt) + ' gacha'
+        });
+      } catch (notificationError) {
+        console.error('Obuna faollashgani haqida xabar yuborilmadi:', notificationError.message);
+      }
+      await updateCallbackMessage(query, '✅ PRO obuna faollashtirildi!');
+    } else {
+      const userId = Number(reject[1]);
+      const paymentId = String(query.message && query.message.caption || '')
+        .match(/To‘lov ID:\s*([0-9a-f-]{36})/i);
+      if (paymentId) {
+        await backend('/api/admin/payments/' + encodeURIComponent(paymentId[1]) + '/reject', actorId, {
+          method: 'POST',
+          body: JSON.stringify({ reason: 'Telegram orqali manual chek rad etildi' })
+        });
+      }
+      try {
+        await telegram('sendMessage', {
+          chat_id: userId,
+          text: '⚠️ To‘lov chekingiz administrator tomonidan rad etildi. Qo‘shimcha ma’lumot uchun administratorga murojaat qiling.'
+        });
+      } catch (notificationError) {
+        console.error('Rad etish haqida xabar yuborilmadi:', notificationError.message);
+      }
+      await updateCallbackMessage(query, '❌ Chek rad etildi');
+    }
+  } catch (error) {
+    if (isApproval) {
+      console.error('Tasdiqlash xatosi:', error);
+      await updateCallbackMessage(query, '❌ Tasdiqlashda xatolik yuz berdi. Administrator loglarni tekshirsin.');
+    } else {
+      console.error('Rad etish xatosi:', error);
+      await updateCallbackMessage(query, '❌ Rad etishda xatolik yuz berdi.');
+    }
+  }
+}
+
+async function updateCallbackMessage(query, captionStatus) {
+  const message = query && query.message;
+  if (message && message.chat && message.message_id != null) {
+    try {
+      if (captionStatus && message.caption) {
+        await telegram('editMessageCaption', {
+          chat_id: message.chat.id,
+          message_id: message.message_id,
+          caption: message.caption + '\n\n' + captionStatus,
+          reply_markup: { inline_keyboard: [] }
+        });
+      } else {
+        await telegram('editMessageReplyMarkup', {
+          chat_id: message.chat.id,
+          message_id: message.message_id,
+          reply_markup: { inline_keyboard: [] }
+        });
+      }
+    } catch (error) {
+      console.error('Callback tugmalarini yangilab bo‘lmadi:', error.message);
+    }
+  }
 }
 
 async function handleAdminCommand(message) {
@@ -197,7 +597,8 @@ async function handleAdminCommand(message) {
       });
     }
   } catch (error) {
-    await telegram('sendMessage', { chat_id: message.chat.id, text: '⚠️ ' + error.message });
+    console.error('Admin buyrug‘i bajarilmadi:', error.message);
+    await telegram('sendMessage', { chat_id: message.chat.id, text: '⚠️ ' + friendlyBotError(error) });
   }
 }
 
@@ -217,7 +618,16 @@ async function startBot() {
 
       for (const update of data.result || []) {
         offset = update.update_id + 1;
-        if (!update.message || !update.message.text) continue;
+        if (update.callback_query) {
+          await handleCallbackQuery(update.callback_query);
+          continue;
+        }
+        if (!update.message) continue;
+        if (update.message.photo && update.message.photo.length) {
+          await handlePaymentReceipt(update.message);
+          continue;
+        }
+        if (!update.message.text) continue;
         if (/^\/start(?:@\w+)?(?:\s|$)/.test(update.message.text)) {
           await handleStart(update.message);
         } else if (update.message.text.startsWith('/')) {
@@ -238,4 +648,13 @@ if (require.main === module) {
   });
 }
 
-module.exports = { escapeHtml, isAdmin, startBot };
+module.exports = {
+  escapeHtml,
+  friendlyBotError,
+  grantSubscriptionDirectly,
+  handleCallbackQuery,
+  handlePaymentReceipt,
+  handleStart,
+  isAdmin,
+  startBot
+};

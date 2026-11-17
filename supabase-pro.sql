@@ -7,7 +7,10 @@ create table if not exists public.users (
   first_name text not null default '',
   username text,
   is_pro boolean not null default false,
+  pro_status text not null default 'free',
+  pro_until timestamptz,
   pro_expires timestamptz,
+  pro_expires_at timestamptz,
   last_active_at timestamptz,
   created_at timestamptz not null default now()
 );
@@ -16,10 +19,21 @@ alter table public.users add column if not exists telegram_id bigint;
 alter table public.users add column if not exists first_name text not null default '';
 alter table public.users add column if not exists username text;
 alter table public.users add column if not exists is_pro boolean not null default false;
+alter table public.users add column if not exists pro_status text not null default 'free';
+alter table public.users add column if not exists pro_until timestamptz;
 alter table public.users add column if not exists pro_expires timestamptz;
+alter table public.users add column if not exists pro_expires_at timestamptz;
 alter table public.users add column if not exists last_active_at timestamptz;
 alter table public.users alter column last_active_at drop default;
 alter table public.users add column if not exists created_at timestamptz not null default now();
+update public.users
+set pro_until = coalesce(pro_until, pro_expires),
+    pro_expires = coalesce(pro_expires, pro_until),
+    pro_expires_at = coalesce(pro_expires_at, pro_until, pro_expires),
+    pro_status = case
+      when is_pro and coalesce(pro_expires_at, pro_until, pro_expires) > now() then 'pro'
+      else 'free'
+    end;
 create unique index if not exists users_telegram_id_uidx on public.users (telegram_id);
 
 create table if not exists public.subscription_plans (
@@ -35,11 +49,13 @@ insert into public.subscription_plans as existing_plan (id, name, duration_month
 values
   ('1-month', '1 oy', 1, 14990),
   ('3-month', '3 oy', 3, 44990),
+  ('6-month', '6 oy', 6, 89990),
   ('12-month', '12 oy', 12, 179990)
 on conflict (id) do update
 set price_uzs = case
       when (existing_plan.id = '1-month' and existing_plan.price_uzs = 29000)
         or (existing_plan.id = '3-month' and existing_plan.price_uzs = 79000)
+        or (existing_plan.id = '6-month' and existing_plan.price_uzs = 159000)
         or (existing_plan.id = '12-month' and existing_plan.price_uzs = 249000)
         then excluded.price_uzs
       else existing_plan.price_uzs
@@ -51,11 +67,14 @@ create table if not exists public.subscriptions (
   status text not null check (status in ('active', 'revoked', 'expired')),
   starts_at timestamptz not null default now(),
   expires_at timestamptz not null,
+  ends_at timestamptz,
   source text not null,
   note text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+alter table public.subscriptions add column if not exists ends_at timestamptz;
+update public.subscriptions set ends_at = expires_at where ends_at is null;
 
 create unique index if not exists subscriptions_one_per_user_uidx
   on public.subscriptions (user_telegram_id);
@@ -175,25 +194,30 @@ as $$
 declare
   v_now timestamptz := now();
   v_expires timestamptz;
+  v_duration_days integer;
 begin
   if p_duration_months < 1 or p_duration_months > 36 then
     raise exception 'Subscription duration must be between 1 and 36 months';
   end if;
+  v_duration_days := case when p_duration_months = 12 then 365 else p_duration_months * 30 end;
 
   insert into public.subscriptions as current_subscription
-    (user_telegram_id, status, starts_at, expires_at, source, note, updated_at)
+    (user_telegram_id, status, starts_at, expires_at, ends_at, source, note, updated_at)
   values
-    (p_telegram_id, 'active', v_now, v_now + make_interval(months => p_duration_months), p_source, p_note, v_now)
+    (p_telegram_id, 'active', v_now, v_now + make_interval(days => v_duration_days),
+     v_now + make_interval(days => v_duration_days), p_source, p_note, v_now)
   on conflict (user_telegram_id) do update set
     status = 'active',
-    expires_at = greatest(current_subscription.expires_at, v_now) + make_interval(months => p_duration_months),
+    expires_at = greatest(current_subscription.expires_at, v_now) + make_interval(days => v_duration_days),
+    ends_at = greatest(current_subscription.expires_at, v_now) + make_interval(days => v_duration_days),
     source = excluded.source,
     note = excluded.note,
     updated_at = v_now
   returning expires_at into v_expires;
 
   update public.users
-  set is_pro = true, pro_expires = v_expires
+  set is_pro = true, pro_status = 'pro', pro_until = v_expires, pro_expires = v_expires,
+      pro_expires_at = v_expires
   where telegram_id = p_telegram_id;
   if not found then
     raise exception 'User not found';
@@ -326,10 +350,14 @@ declare
   v_daily_limit integer := 5;
 begin
   select exists (
-    select 1 from public.subscriptions
-    where user_telegram_id = p_telegram_id
-      and status = 'active'
-      and expires_at > now()
+    select 1
+    from public.users u
+    join public.subscriptions s on s.user_telegram_id = u.telegram_id
+    where u.telegram_id = p_telegram_id
+      and u.is_pro = true
+      and coalesce(u.pro_expires_at, u.pro_until, u.pro_expires, 'infinity'::timestamptz) > now()
+      and s.status = 'active'
+      and s.expires_at > now()
   ) into v_pro;
 
   insert into public.ai_usage (user_telegram_id, usage_date, request_count)
@@ -411,9 +439,11 @@ set search_path = public
 as $$
 begin
   update public.subscriptions
-  set status = 'revoked', expires_at = now(), updated_at = now()
+  set status = 'revoked', expires_at = now(), ends_at = now(), updated_at = now()
   where user_telegram_id = p_telegram_id;
-  update public.users set is_pro = false, pro_expires = null
+  update public.users
+  set is_pro = false, pro_status = 'free', pro_until = null, pro_expires = null,
+      pro_expires_at = null
   where telegram_id = p_telegram_id;
   return found;
 end;
