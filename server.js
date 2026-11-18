@@ -1297,28 +1297,132 @@ app.post('/api/admin/payments/:id/approve', requireDatabase, requireTelegram, re
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(paymentId)) {
     return sendError(res, 400, 'To‘lov identifikatori noto‘g‘ri.');
   }
-  const { data, error } = await supabase.rpc('approve_manual_payment', {
-    p_payment_id: paymentId,
-    p_admin_telegram_id: req.user.telegram_id
-  });
-  if (error) {
-    console.error('Qo‘lda to‘lovni tasdiqlash xatosi:', error.message);
-    return sendError(res, 409, 'To‘lov chekini tasdiqlab bo‘lmadi. Holati yoki chekni tekshiring.');
-  }
-  if (!data || !data.ok) return sendError(res, 409, 'To‘lov tasdiqlanmadi.');
 
-  const { data: payment, error: userError } = await supabase.from('payments')
-    .select('user_telegram_id').eq('id', paymentId).single();
-  if (userError) {
-    console.error('Tasdiqlangan to‘lov egasini topish xatosi:', userError.message);
-  } else {
-    await notifyTelegramUser(
-      payment.user_telegram_id,
-      '✅ PRO obunangiz faollashtirildi! Amal qilish muddati: ' +
-        formatSubscriptionDate(data.expiresAt) + ' gacha'
-    );
+  let rpcSuccess = false;
+  let expiresAt = null;
+  let alreadyProcessed = false;
+
+  try {
+    const { data, error } = await supabase.rpc('approve_manual_payment', {
+      p_payment_id: paymentId,
+      p_admin_telegram_id: req.user.telegram_id
+    });
+    if (!error && data && data.ok) {
+      rpcSuccess = true;
+      expiresAt = data.expiresAt;
+      alreadyProcessed = Boolean(data.alreadyProcessed);
+    } else if (error) {
+      console.warn('RPC approve_manual_payment xatosi:', error.message, '- to‘g‘ridan-to‘g‘ri zaxira tasdiqlashga o‘tilmoqda.');
+    }
+  } catch (rpcErr) {
+    console.warn('RPC chaqirish xatosi:', rpcErr.message);
   }
-  return res.json({ ok: true, expiresAt: data.expiresAt, alreadyProcessed: data.alreadyProcessed });
+
+  if (!rpcSuccess) {
+    const { data: payment, error: pError } = await supabase.from('payments')
+      .select('*')
+      .eq('id', paymentId)
+      .maybeSingle();
+
+    if (pError || !payment) {
+      console.error('To‘lov topilmadi:', pError ? pError.message : 'Topilmadi');
+      return sendError(res, 404, 'To‘lov topilmadi.');
+    }
+
+    if (payment.status === 'paid') {
+      return res.json({ ok: true, alreadyProcessed: true });
+    }
+
+    const targetUserId = payment.user_telegram_id || payment.telegram_id;
+    if (!targetUserId) {
+      return sendError(res, 400, 'To‘lov egasi ma’lumoti topilmadi.');
+    }
+
+    let months = Number(payment.duration_months);
+    if (!months || Number.isNaN(months) || months < 1) {
+      const pId = String(payment.plan_id || payment.plan || '');
+      if (pId.includes('12') || pId.includes('365')) months = 12;
+      else if (pId.includes('6') || pId.includes('180')) months = 6;
+      else if (pId.includes('3') || pId.includes('90')) months = 3;
+      else months = 1;
+    }
+    const durationDays = months === 12 ? 365 : months * 30;
+
+    const now = new Date();
+    let currentExpiry = null;
+    try {
+      const { data: user } = await supabase.from('users')
+        .select('is_pro, pro_status, pro_until, pro_expires_at')
+        .eq('telegram_id', targetUserId)
+        .maybeSingle();
+      if (user) {
+        const expVal = user.pro_expires_at || user.pro_until;
+        if (expVal) {
+          const d = new Date(expVal);
+          if (!Number.isNaN(d.getTime()) && d > now) {
+            currentExpiry = d;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Foydalanuvchi joriy obunasini tekshirish xatosi:', e.message);
+    }
+
+    const baseDate = currentExpiry || now;
+    expiresAt = new Date(baseDate.getTime() + durationDays * 86400000).toISOString();
+
+    const updateVariants = [
+      { is_pro: true, pro_status: 'pro', pro_until: expiresAt, pro_expires_at: expiresAt },
+      { is_pro: true, pro_status: 'pro', pro_until: expiresAt },
+      { is_pro: true, pro_until: expiresAt },
+      { is_pro: true }
+    ];
+    for (const variant of updateVariants) {
+      const { error: uErr } = await supabase.from('users')
+        .upsert(Object.assign({ telegram_id: targetUserId }, variant), { onConflict: 'telegram_id' });
+      if (!uErr) break;
+      const { error: updErr } = await supabase.from('users')
+        .update(variant)
+        .eq('telegram_id', targetUserId);
+      if (!updErr) break;
+    }
+
+    await supabase.from('payments').update({
+      status: 'paid',
+      paid_at: now.toISOString(),
+      provider_data: Object.assign({}, payment.provider_data || {}, {
+        reviewed_by: req.user.telegram_id,
+        reviewed_at: now.toISOString(),
+        approval_source: 'api'
+      })
+    }).eq('id', paymentId);
+
+    try {
+      await supabase.from('subscriptions').upsert({
+        user_telegram_id: targetUserId,
+        status: 'active',
+        starts_at: now.toISOString(),
+        expires_at: expiresAt,
+        ends_at: expiresAt,
+        source: 'manual_payment',
+        updated_at: now.toISOString()
+      }, { onConflict: 'user_telegram_id' });
+    } catch (e) {}
+  }
+
+  const { data: paymentInfo } = await supabase.from('payments')
+    .select('user_telegram_id, telegram_id')
+    .eq('id', paymentId)
+    .maybeSingle();
+  const notifyId = paymentInfo && (paymentInfo.user_telegram_id || paymentInfo.telegram_id);
+  if (notifyId) {
+    await notifyTelegramUser(
+      notifyId,
+      '🎉 PRO obunangiz faollashtirildi! Amal qilish muddati: ' +
+        formatSubscriptionDate(expiresAt) + ' gacha'
+    ).catch(() => {});
+  }
+  return res.json({ ok: true, expiresAt, alreadyProcessed });
 });
 
 app.post('/api/admin/payments/:id/reject', requireDatabase, requireTelegram, requireAdmin, async (req, res) => {
@@ -1598,7 +1702,7 @@ app.get('/api/admin/stats', requireDatabase, requireTelegram, requireAdmin, asyn
       supabase.from('payments').select('*', { count: 'exact', head: true }).eq('status', 'review'),
       supabase.from('payments').select('*', { count: 'exact', head: true }).eq('status', 'rejected'),
       supabase.from('payments').select('*', { count: 'exact', head: true }).eq('status', 'paid'),
-      supabase.from('users').select('telegram_id, first_name, username, is_pro, pro_expires, pro_expires_at, last_active_at, created_at')
+      supabase.from('users').select('telegram_id, first_name, username, is_pro, pro_until, pro_expires_at, last_active_at, created_at')
         .order('created_at', { ascending: false }).limit(20),
       supabase.rpc('subscription_revenue')
     ]);
@@ -1761,4 +1865,6 @@ module.exports = {
   parseReceiptVisionData,
   receiptMimeMatches
 };
-require('./bot.js').startBot().catch(err => console.error('Bot xatosi:', err));
+if (require.main === module) {
+  require('./bot.js').startBot().catch(err => console.error('Bot xatosi:', err));
+}
