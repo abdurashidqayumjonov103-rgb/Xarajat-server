@@ -677,7 +677,7 @@ async function updateCallbackMessage(query, captionStatus) {
   }
 }
 
-async function handleAdminCommand(message) {
+async function handleAdminCommand(message, database = supabase) {
   const [command, ...args] = String(message.text || '').trim().split(/\s+/);
   const actorId = message.from.id;
   if (!isAdmin(actorId)) {
@@ -698,7 +698,94 @@ async function handleAdminCommand(message) {
           '/price TARIF_ID NARX OY — tarif sozlash',
           '/prousers — faol PRO foydalanuvchilari',
           '/propayments — to‘lovlar',
-          '/prorevenue — tushum'
+          '/prorevenue — tushum',
+          '/card KARTA ISMI BANKI — to‘lov kartasini sozlash'
+        ].join('\n'),
+        parse_mode: 'HTML'
+      });
+      return;
+    }
+
+    if (command === '/card' || command === '/karta' || command === '/setcard') {
+      const fullText = String(message.text || '').replace(/^\/(?:card|karta|setcard)\s*/i, '').trim();
+      if (!fullText) {
+        let current = {};
+        if (database) {
+          const { data } = await database.from('app_settings')
+            .select('value').eq('key', 'manual_payment_details').maybeSingle();
+          if (data && data.value) {
+            try { current = JSON.parse(data.value); } catch (e) {}
+          }
+        }
+        await telegram('sendMessage', {
+          chat_id: message.chat.id,
+          text: [
+            '💳 <b>To‘lov kartasi sozlamalari</b>',
+            '',
+            'Joriy karta: <code>' + (current.account || 'Mavjud emas') + '</code>',
+            'Egasi: <b>' + (current.accountName || 'Mavjud emas') + '</b>',
+            'Bank: <b>' + (current.bank || 'Mavjud emas') + '</b>',
+            '',
+            '<b>O‘zgartirish uchun buyruq:</b>',
+            '<code>/card KARTA_RAQAMI ISMI BANKI</code>',
+            '',
+            'Misol:',
+            '<code>/card 8600123456789012 Abdurashid Qayumjonov Uzcard</code>'
+          ].join('\n'),
+          parse_mode: 'HTML'
+        });
+        return;
+      }
+
+      const digitsMatch = fullText.match(/^((?:\d[\s-]*){16,19})(.*)$/);
+      if (!digitsMatch) {
+        throw new Error('Karta raqami kamida 16 ta raqamdan iborat bo‘lishi kerak.\nMisol: /card 8600123456789012 Abdurashid Uzcard');
+      }
+      const rawDigits = digitsMatch[1].replace(/\D/g, '');
+      const formattedCard = rawDigits.replace(/(\d{4})(?=\d)/g, '$1 ');
+      const rest = digitsMatch[2].trim();
+      const restParts = rest ? rest.split(/\s+/) : [];
+      let holder = 'XARAJAT AI';
+      let bank = 'Uzcard / Humo';
+      if (restParts.length === 1) {
+        holder = restParts[0];
+      } else if (restParts.length >= 2) {
+        bank = restParts.pop();
+        holder = restParts.join(' ');
+      }
+
+      const details = {
+        account: formattedCard,
+        accountName: holder,
+        bank: bank,
+        instructions: 'To‘lovni amalga oshirgach, to‘lov chekini ushbu botga yuboring.'
+      };
+
+      if (database) {
+        await database.from('app_settings').upsert({
+          key: 'manual_payment_details',
+          value: JSON.stringify(details),
+          updated_at: new Date().toISOString()
+        });
+      }
+
+      try {
+        await backend('/api/admin/payment-details', actorId, {
+          method: 'PUT',
+          body: JSON.stringify(details)
+        });
+      } catch (e) {}
+
+      await telegram('sendMessage', {
+        chat_id: message.chat.id,
+        text: [
+          '✅ <b>To‘lov kartasi muvaffaqiyatli saqlandi!</b>',
+          '',
+          '💳 Karta: <code>' + formattedCard + '</code>',
+          '👤 Egasi: <b>' + holder + '</b>',
+          '🏦 Bank: <b>' + bank + '</b>',
+          '',
+          'Endi barcha foydalanuvchilar to‘lov qilayotganda ushbu karta ko‘rinadi.'
         ].join('\n'),
         parse_mode: 'HTML'
       });
@@ -847,6 +934,7 @@ module.exports = {
   handleCallbackQuery,
   handlePaymentReceipt,
   handleStart,
+  handleAdminCommand,
   isAdmin,
   startBot
 };
