@@ -20,9 +20,11 @@ function verifyTelegramInitData(initData, botToken, maxAgeSeconds = 86400) {
     .sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)
     .map(([key, value]) => key + '=' + value)
     .join('\n');
-  const secretKey = crypto.createHmac('sha256', botToken).update('WebAppData').digest();
-  const expectedHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
-  if (!safeEqual(expectedHash, suppliedHash)) return null;
+  const secretKeyOfficial = crypto.createHmac('sha256', 'WebAppData').update(botToken).digest();
+  const hashOfficial = crypto.createHmac('sha256', secretKeyOfficial).update(dataCheckString).digest('hex');
+  const secretKeyLegacy = crypto.createHmac('sha256', botToken).update('WebAppData').digest();
+  const hashLegacy = crypto.createHmac('sha256', secretKeyLegacy).update(dataCheckString).digest('hex');
+  if (!safeEqual(hashOfficial, suppliedHash) && !safeEqual(hashLegacy, suppliedHash)) return null;
 
   try {
     const user = JSON.parse(params.get('user') || '{}');
