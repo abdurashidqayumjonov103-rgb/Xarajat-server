@@ -1693,4 +1693,4 @@ module.exports = {
   parseReceiptVisionData,
   receiptMimeMatches
 };
-require('./bot.js');
+require('./bot.js').startBot().catch(err => console.error('Bot xatosi:', err));
