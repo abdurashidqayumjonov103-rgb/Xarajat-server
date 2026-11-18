@@ -1141,7 +1141,7 @@ function parseReceiptOcrText(text) {
   }).filter(Boolean);
   var date = '', storeName = '', items = [], total = 0;
   var totalPattern = /jami|umumiy|to['’`]?lov|total|итого|к оплате|summa/i;
-  var ignoredPattern = /chek|receipt|kassir|кассир|telefon|тел\.|инн|fiskal|manzil|адрес|karta|terminal/i;
+  var ignoredPattern = /chek|receipt|чек|kassir|кассир|telefon|тел\.|инн|inn|fiskal|фискал|фм|модул|manzil|адрес|karta|карта|terminal|терминал|nds|qqs|ндс|ққс|налог|солиқ|дисконт|keshbek|кешбек|bonus|бонус|скидка|sdacha|сдача|qaytim|naqd|наличные|uzcard|humo|visa|qr|код/i;
   lines.forEach(function(line, index) {
     if (!date) {
       var dateMatch = line.match(/\b(?:\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[./-]\d{1,2}[./-]\d{2,4})\b/);

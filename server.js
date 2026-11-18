@@ -123,34 +123,51 @@ function enqueueAiRequest(isPro, operation) {
 
 async function requestGemini(question, systemPrompt, signal) {
   const configuredModel = String(process.env.AI_MODEL || '').trim();
-  const model = !configuredModel || /^gemini-(?:1\.0|1\.5|pro(?:-|$))/i.test(configuredModel)
+  const primaryModel = !configuredModel || /^gemini-(?:1\.0|1\.5|pro(?:-|$))/i.test(configuredModel)
     ? 'gemini-3.6-flash'
     : configuredModel;
-  const response = await fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent',
-    {
-      method: 'POST',
-      headers: {
-        'x-goog-api-key': process.env.AI_API_KEY,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ role: 'user', parts: [{ text: question }] }],
-        generationConfig: { maxOutputTokens: 700 }
-      }),
-      signal
+  const modelsToTry = [primaryModel, 'gemini-3.1-flash-lite'];
+  let lastError = null;
+
+  for (const model of modelsToTry) {
+    try {
+      const response = await fetch(
+        'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent',
+        {
+          method: 'POST',
+          headers: {
+            'x-goog-api-key': process.env.AI_API_KEY,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: systemPrompt }] },
+            contents: [{ role: 'user', parts: [{ text: question }] }],
+            generationConfig: { maxOutputTokens: 700 }
+          }),
+          signal
+        }
+      );
+      const result = await response.json().catch(() => ({}));
+      if (response.ok) {
+        const parts = result.candidates && result.candidates[0] &&
+          result.candidates[0].content && result.candidates[0].content.parts;
+        const content = Array.isArray(parts)
+          ? parts.map(part => typeof part.text === 'string' ? part.text : '').filter(Boolean).join('\n')
+          : '';
+        if (content.trim()) return content.trim();
+      }
+      const apiMessage = result.error && result.error.message
+        ? result.error.message
+        : 'Gemini API HTTP ' + response.status;
+      lastError = new Error(apiMessage);
+      lastError.status = response.status;
+      if (response.status !== 503 && response.status !== 404) break;
+    } catch (e) {
+      lastError = e;
+      if (e.name === 'AbortError') break;
     }
-  );
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const apiMessage = result.error && result.error.message
-      ? result.error.message
-      : 'Gemini API HTTP ' + response.status;
-    const error = new Error(apiMessage);
-    error.status = response.status;
-    throw error;
   }
+  throw lastError || new Error('Gemini API javob bermadi');
   const parts = result.candidates && result.candidates[0] &&
     result.candidates[0].content && result.candidates[0].content.parts;
   const content = Array.isArray(parts)
@@ -162,49 +179,65 @@ async function requestGemini(question, systemPrompt, signal) {
 
 async function requestGeminiWithImage(image, mimeType, signal) {
   const configuredModel = String(process.env.AI_MODEL || '').trim();
-  const model = !configuredModel || /^gemini-(?:1\.0|1\.5|pro(?:-|$))/i.test(configuredModel)
+  const primaryModel = !configuredModel || /^gemini-(?:1\.0|1\.5|pro(?:-|$))/i.test(configuredModel)
     ? 'gemini-3.6-flash'
     : configuredModel;
+  const modelsToTry = [primaryModel, 'gemini-3.1-flash-lite'];
+  let lastError = null;
   const prompt = [
-    'Rasmdagi do‘kon chekini o‘qing. Faqat bitta JSON obyekt qaytaring, izoh yoki markdown yozmang.',
-    'Shakl: {"storeName":string|null,"date":"YYYY-MM-DD"|null,"items":[{"name":string,"price":integer}],"total":integer|null}.',
-    'Mahsulotlarni alohida qatorda aniqlang, narxlarni UZSdagi butun son sifatida bering.',
-    'Jami summani chekdagi to‘lanadigan jami qiymatdan oling. Noaniq qiymatlarni taxmin qilmang; aniqlanmagan maydonni null yoki bo‘sh ro‘yxat qiling.'
+    'Siz xarid cheklarini tahlil qiluvchi professional AI yordamchisiz. Rasmdagi chekni sinchiklab o‘qing.',
+    'MUHIM QOIDALAR:',
+    '1. FAQAT va FAQAT haqiqiy sotib olingan tovarlar yoki xizmatlarni (mahsulotlarni) aniqlang.',
+    '2. Chekdagi xizmat ma’lumotlarini (INN, QQS/NDS, fiskal belgi/modul, chek raqami, sana, terminal, kassa, kassir, to‘lov turi, karta raqami, keshbek, chegirma, manzil, telefon) MAHSULOT EMAS, ularni "items" ro‘yxatiga mutlaqo qo‘shmang!',
+    '3. Har bir mahsulot uchun: "name" - mahsulotning toza nomi (kodlarsiz), "price" - yakuniy narxi (UZS butun son).',
+    '4. "total" - chekning umumiy yakuniy to‘lov summasi (UZS butun son).',
+    '5. "storeName" - savdo shoxobchasi yoki do‘kon nomi.',
+    '6. "date" - xarid sanasi (YYYY-MM-DD formatida).',
+    'Faqat bitta toza JSON qaytaring, markdown yoki ortiqcha izohlarsiz:',
+    '{"storeName":string|null,"date":"YYYY-MM-DD"|null,"items":[{"name":string,"price":integer}],"total":integer|null}'
   ].join(' ');
-  const response = await fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent',
-    {
-      method: 'POST',
-      headers: {
-        'x-goog-api-key': process.env.AI_API_KEY,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        contents: [{
-          role: 'user',
-          parts: [
-            { text: prompt },
-            { inlineData: { mimeType, data: image.toString('base64') } }
-          ]
-        }],
-        generationConfig: { maxOutputTokens: 1200, responseMimeType: 'application/json' }
-      }),
-      signal
+  for (const model of modelsToTry) {
+    try {
+      const response = await fetch(
+        'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent',
+        {
+          method: 'POST',
+          headers: {
+            'x-goog-api-key': process.env.AI_API_KEY,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            contents: [{
+              role: 'user',
+              parts: [
+                { text: prompt },
+                { inlineData: { mimeType, data: image.toString('base64') } }
+              ]
+            }],
+            generationConfig: { maxOutputTokens: 1200, responseMimeType: 'application/json' }
+          }),
+          signal
+        }
+      );
+      const result = await response.json().catch(() => ({}));
+      if (response.ok) {
+        const parts = result.candidates && result.candidates[0] &&
+          result.candidates[0].content && result.candidates[0].content.parts;
+        const content = Array.isArray(parts)
+          ? parts.map(part => typeof part.text === 'string' ? part.text : '').filter(Boolean).join('\n')
+          : '';
+        if (content.trim()) return content.trim();
+      }
+      const errorMsg = result.error && result.error.message || 'Gemini Vision HTTP ' + response.status;
+      lastError = new Error(errorMsg);
+      lastError.status = response.status;
+      if (response.status !== 503 && response.status !== 404) break;
+    } catch (e) {
+      lastError = e;
+      if (e.name === 'AbortError') break;
     }
-  );
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const error = new Error(result.error && result.error.message || 'Gemini Vision HTTP ' + response.status);
-    error.status = response.status;
-    throw error;
   }
-  const parts = result.candidates && result.candidates[0] &&
-    result.candidates[0].content && result.candidates[0].content.parts;
-  const content = Array.isArray(parts)
-    ? parts.map(part => typeof part.text === 'string' ? part.text : '').filter(Boolean).join('\n')
-    : '';
-  if (!content.trim()) throw new Error('Gemini Vision bo‘sh javob qaytardi.');
-  return content.trim();
+  throw lastError || new Error('Gemini Vision javob bermadi.');
 }
 
 function parseReceiptVisionData(content) {
@@ -220,13 +253,14 @@ function parseReceiptVisionData(content) {
     const result = Number(digits);
     return digits && Number.isSafeInteger(result) ? result : null;
   };
+  const serviceWordPattern = /^(?:jami|umumiy|total|итого|to['’`]?lov|summa|nds|qqs|ндс|ққс|fiskal|фискал|kassir|кассир|chek|чек|terminal|терминал|naqd|qaytim|сдача|скидка|keshbek|karta|карта|uzcard|humo|visa|inn|инн)\b/i;
   const items = (Array.isArray(parsed.items) ? parsed.items : [])
     .slice(0, 100)
     .map(item => ({
       name: String(item && (item.name || item.title) || '').trim().slice(0, 100),
       price: amount(item && (item.price != null ? item.price : item.amount))
     }))
-    .filter(item => item.name && item.price > 0);
+    .filter(item => item.name && item.price > 0 && !serviceWordPattern.test(item.name));
   const total = amount(parsed.total != null ? parsed.total : parsed.totalAmount);
   const result = {
     storeName: String(parsed.storeName || parsed.store_name || '').trim().slice(0, 100) || null,
