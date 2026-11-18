@@ -168,16 +168,34 @@ async function handlePaymentReceipt(message) {
   // Backend javob bermasa yoki to'lov topilmasa, to'g'ridan-to'g'ri Supabase'dan izlash:
   if (!payment && supabase) {
     try {
-      const { data, error } = await supabase.from('payments')
-        .select('id, plan_id, provider, amount_uzs, duration_months, status, created_at')
+      const res = await supabase.from('payments')
+        .select('*')
         .eq('user_telegram_id', Number(chatId))
-        .eq('provider', 'manual')
         .in('status', ['pending', 'review'])
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
-      if (!error && data) {
-        payment = data;
+      if (!res.error && res.data) {
+        payment = res.data;
+      } else if (res.error && (res.error.code === '42703' || String(res.error.message || '').includes('user_telegram_id'))) {
+        // Agar user_telegram_id ustuni bo'lmasa, legacy telegram_id ustuni orqali qidirish:
+        const legacyRes = await supabase.from('payments')
+          .select('*')
+          .eq('telegram_id', Number(chatId))
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (!legacyRes.error && legacyRes.data) {
+          const row = legacyRes.data;
+          const planStr = row.plan_id || row.plan || 'unknown';
+          payment = {
+            id: row.id,
+            plan_id: planStr,
+            duration_months: row.duration_months || planDurationMonths(planStr),
+            amount_uzs: row.amount_uzs || row.amount || 0,
+            status: row.status
+          };
+        }
       }
     } catch (fallbackError) {
       console.error('PRO arizasi muddatini aniqlab bo‘lmadi (supabase):', fallbackError.message);
@@ -187,14 +205,32 @@ async function handlePaymentReceipt(message) {
   // Agar hali ham topilmasa, foydalanuvchining eng so'nggi to'lov yozuvini tekshirish:
   if (!payment && supabase) {
     try {
-      const { data } = await supabase.from('payments')
-        .select('id, plan_id, provider, amount_uzs, duration_months, status, created_at')
+      const res = await supabase.from('payments')
+        .select('*')
         .eq('user_telegram_id', Number(chatId))
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
-      if (data && data.duration_months) {
-        payment = data;
+      if (res.data) {
+        payment = res.data;
+      } else {
+        const legacyRes = await supabase.from('payments')
+          .select('*')
+          .eq('telegram_id', Number(chatId))
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (legacyRes.data) {
+          const row = legacyRes.data;
+          const planStr = row.plan_id || row.plan || 'unknown';
+          payment = {
+            id: row.id,
+            plan_id: planStr,
+            duration_months: row.duration_months || planDurationMonths(planStr),
+            amount_uzs: row.amount_uzs || row.amount || 0,
+            status: row.status
+          };
+        }
       }
     } catch (e) {
       console.error('Eng so‘nggi to‘lovni olishda xatolik:', e.message);

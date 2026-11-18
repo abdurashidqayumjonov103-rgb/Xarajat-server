@@ -670,53 +670,94 @@ app.get('/api/subscription/status', requireDatabase, requireTelegram, async (req
 });
 
 app.post(['/api/payments/create', '/api/payments'], requireDatabase, requireTelegram, async (req, res) => {
-  const planId = String(req.body.planId || '');
+  const planId = String(req.body.planId || '').trim();
   try {
-    const { data: plan, error: planError } = await supabase
-      .from('subscription_plans')
-      .select('id, name, duration_months, price_uzs')
-      .eq('id', planId)
-      .eq('active', true)
-      .maybeSingle();
-    if (planError) throw planError;
+    let plan = null;
+    try {
+      const { data: dbPlan, error: planError } = await supabase
+        .from('subscription_plans')
+        .select('id, name, duration_months, price_uzs')
+        .eq('id', planId)
+        .eq('active', true)
+        .maybeSingle();
+      if (!planError && dbPlan) plan = dbPlan;
+    } catch (e) {}
+
+    if (!plan) {
+      const normalizedPlanId = planId.replace(/_/g, '-');
+      plan = DEFAULT_PLANS.find(p => p.id === planId || p.id === normalizedPlanId);
+    }
     if (!plan) return sendError(res, 404, 'Tarif topilmadi yoki faol emas.');
 
-    const { count, error: pendingError } = await supabase
-      .from('payments')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_telegram_id', req.user.telegram_id)
-      .eq('status', 'pending')
-      .gt('expires_at', new Date().toISOString());
-    if (pendingError) throw pendingError;
-    if (count >= 3) return sendError(res, 429, 'Kutilayotgan to‘lovlar limiti tugadi. Birozdan so‘ng urinib ko‘ring.');
+    try {
+      const { count, error: pendingError } = await supabase
+        .from('payments')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_telegram_id', req.user.telegram_id)
+        .eq('status', 'pending')
+        .gt('expires_at', new Date().toISOString());
+      if (!pendingError && count >= 5) {
+        return sendError(res, 429, 'Kutilayotgan to‘lovlar limiti tugadi. Birozdan so‘ng urinib ko‘ring.');
+      }
+    } catch (e) {}
 
     let configuredDetails = {};
-    const { data: settingsRow, error: settingsError } = await supabase.from('app_settings')
-      .select('value').eq('key', 'manual_payment_details').maybeSingle();
-    if (settingsError) {
-      console.error('To‘lov rekvizitlarini tekshirish xatosi:', settingsError.message);
-    } else if (settingsRow) {
-      try {
+    try {
+      const { data: settingsRow } = await supabase.from('app_settings')
+        .select('value').eq('key', 'manual_payment_details').maybeSingle();
+      if (settingsRow && settingsRow.value) {
         configuredDetails = JSON.parse(settingsRow.value) || {};
-      } catch (settingsParseError) {
-        console.error('To‘lov rekvizitlari JSON xatosi:', settingsParseError.message);
+      }
+    } catch (e) {}
+
+    let payment = null;
+    let insertError = null;
+    try {
+      const resNew = await supabase
+        .from('payments')
+        .insert({
+          user_telegram_id: req.user.telegram_id,
+          plan_id: plan.id,
+          provider: 'manual',
+          amount_uzs: plan.price_uzs,
+          duration_months: plan.duration_months,
+          status: 'pending',
+          expires_at: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString()
+        })
+        .select('id, amount_uzs, duration_months, provider')
+        .single();
+      insertError = resNew.error;
+      payment = resNew.data;
+    } catch (e) {
+      insertError = e;
+    }
+
+    if (insertError && (insertError.code === '42703' || String(insertError.message || '').includes('user_telegram_id'))) {
+      const legacyInsert = await supabase
+        .from('payments')
+        .insert({
+          telegram_id: req.user.telegram_id,
+          plan: plan.id,
+          amount: plan.price_uzs,
+          status: 'pending'
+        })
+        .select('id, amount, plan')
+        .single();
+      if (!legacyInsert.error && legacyInsert.data) {
+        insertError = null;
+        payment = {
+          id: legacyInsert.data.id,
+          amount_uzs: legacyInsert.data.amount,
+          duration_months: plan.duration_months,
+          provider: 'manual'
+        };
+      } else {
+        insertError = legacyInsert.error;
       }
     }
 
-    const { data: payment, error: insertError } = await supabase
-      .from('payments')
-      .insert({
-        user_telegram_id: req.user.telegram_id,
-        plan_id: plan.id,
-        provider: 'manual',
-        amount_uzs: plan.price_uzs,
-        duration_months: plan.duration_months,
-        status: 'pending',
-        expires_at: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString()
-      })
-      .select('id, amount_uzs, duration_months, provider')
-      .single();
     if (insertError) throw insertError;
+
     return res.status(201).json({
       ok: true,
       payment_id: 'pay_' + Date.now(),
@@ -738,14 +779,41 @@ app.post(['/api/payments/create', '/api/payments'], requireDatabase, requireTele
 });
 
 app.get('/api/payments/history', requireDatabase, requireTelegram, async (req, res) => {
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('payments')
     .select('id, plan_id, provider, amount_uzs, duration_months, status, created_at, paid_at')
     .eq('user_telegram_id', req.user.telegram_id)
     .order('created_at', { ascending: false })
     .limit(50);
+
+  if (error && (error.code === '42703' || String(error.message || '').includes('user_telegram_id'))) {
+    const legacy = await supabase
+      .from('payments')
+      .select('id, plan, amount, status, created_at')
+      .eq('telegram_id', req.user.telegram_id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (!legacy.error && legacy.data) {
+      data = legacy.data.map(item => {
+        const pId = item.plan || 'unknown';
+        const dMatch = String(pId).match(/^(\d+)[_-]/);
+        const m = dMatch ? Number(dMatch[1]) : 1;
+        return {
+          id: item.id,
+          plan_id: pId,
+          provider: 'manual',
+          amount_uzs: item.amount || 0,
+          duration_months: m,
+          status: item.status,
+          created_at: item.created_at
+        };
+      });
+      error = null;
+    }
+  }
+
   if (error) return sendError(res, 503, 'To‘lov tarixini yuklab bo‘lmadi.');
-  return res.json(data);
+  return res.json(data || []);
 });
 
 app.post('/api/payments/:id/receipt', requireDatabase, requireTelegram, receiptUpload.single('receipt'), async (req, res) => {
