@@ -158,7 +158,7 @@ async function handlePaymentReceipt(message) {
   try {
     const payments = await backend('/api/payments/history', chatId);
     if (!Array.isArray(payments)) throw new Error('To‘lovlar ro‘yxati noto‘g‘ri javob qaytardi.');
-    payment = payments.find(item => item.provider === 'manual' && item.status === 'pending') || null;
+    payment = payments.find(item => item.provider === 'manual' && (item.status === 'pending' || item.status === 'review')) || null;
   } catch (error) {
     console.error('PRO arizasi muddatini aniqlab bo‘lmadi:', error.message);
   }
