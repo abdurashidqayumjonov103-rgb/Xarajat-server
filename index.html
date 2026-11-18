@@ -1996,8 +1996,8 @@ async function buyPro(planId) {
   var cardHolder = payment.card_holder || "XARAJAT AI";
   $("payment-plan-summary").textContent = plan.name + " · " + fmt(amount) + " UZS · " + durationMonths + " oy";
   $("payment-details").innerHTML = (cardNumber && !cardNumber.includes("*")
-    ? '<div><b>' + escape(payment.bank || "Admin kartasi") + '</b></div><div style="font-size:20px;font-weight:800;letter-spacing:.5px;margin:6px 0">' +
-      escape(cardNumber) + '</div><div>Karta egasi: ' + escape(cardHolder) + '</div>' +
+    ? '<div><b>' + escape(payment.bank || "Admin kartasi") + '</b></div><div style="font-size:20px;font-weight:800;letter-spacing:.5px;margin:6px 0;display:flex;align-items:center;gap:10px"><span>' +
+      escape(cardNumber) + '</span><button class="pill" type="button" style="cursor:pointer;font-size:12px;padding:4px 10px" onclick="navigator.clipboard.writeText(\'' + escape(cardNumber).replace(/\s+/g, '') + '\');toast(\'Karta raqami nusxalandi!\',\'success\')">Nusxalash</button></div><div>Karta egasi: ' + escape(cardHolder) + '</div>' +
       (payment.instructions ? '<p style="margin-top:8px">' + escape(payment.instructions) + '</p>' : '')
     : '<div>Karta rekvizitlari hozircha mavjud emas. Bot orqali administrator bilan bog‘laning.</div>') +
     '<p style="margin-top:8px">To‘lov summasi: <b>' + fmt(amount) + ' UZS</b></p>' +
