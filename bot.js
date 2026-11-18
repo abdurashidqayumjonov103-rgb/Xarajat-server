@@ -352,7 +352,7 @@ function formatSubscriptionDate(value) {
 async function grantSubscriptionDirectly(userId, durationDays, planId, database = supabase) {
   if (!database) throw new Error('Zaxira obuna xizmati sozlanmagan.');
   const userQuery = await database.from('users')
-    .select('telegram_id, pro_expires_at, pro_until, pro_expires')
+    .select('telegram_id, pro_expires_at, pro_until')
     .eq('telegram_id', userId)
     .maybeSingle();
   if (userQuery.error) throw userQuery.error;

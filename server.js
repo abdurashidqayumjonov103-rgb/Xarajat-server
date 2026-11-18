@@ -286,14 +286,14 @@ async function loadUser(telegramId) {
   const { data, error } = await supabase
     .from('users')
     .upsert({ telegram_id: telegramId, last_active_at: new Date().toISOString() }, { onConflict: 'telegram_id' })
-    .select('id, telegram_id, first_name, username, is_pro, pro_status, pro_until, pro_expires, pro_expires_at, created_at')
+    .select('id, telegram_id, first_name, username, is_pro, pro_status, pro_until, pro_expires_at, created_at')
     .maybeSingle();
   if (error) throw error;
   if (data) return data;
 
   const result = await supabase
     .from('users')
-    .select('id, telegram_id, first_name, username, is_pro, pro_status, pro_until, pro_expires, pro_expires_at, created_at')
+    .select('id, telegram_id, first_name, username, is_pro, pro_status, pro_until, pro_expires_at, created_at')
     .eq('telegram_id', telegramId)
     .single();
   if (result.error) throw result.error;
@@ -525,7 +525,7 @@ app.post('/api/auth', requireDatabase, async (req, res) => {
         username: username || null,
         last_active_at: new Date().toISOString()
       }, { onConflict: 'telegram_id' })
-      .select('id, telegram_id, first_name, username, is_pro, pro_status, pro_until, pro_expires, pro_expires_at, created_at')
+      .select('id, telegram_id, first_name, username, is_pro, pro_status, pro_until, pro_expires_at, created_at')
       .single();
     if (error) throw error;
 
