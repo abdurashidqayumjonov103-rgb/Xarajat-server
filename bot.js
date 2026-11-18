@@ -301,7 +301,7 @@ function isAdmin(telegramId) {
 async function handleStart(message) {
   const chatId = message.chat.id;
   const firstName = message.from.first_name || 'Foydalanuvchi';
-  let subscriptionText = '🆓 Siz hozir FREE tarifidasiz. PRO tarifini ilovada ko‘ring.';
+  let subscriptionText = '🆓 <b>Obunangiz:</b> FREE tarif (PRO imkoniyatlarini ilovada ochishingiz mumkin).';
 
   try {
     const user = await backend('/api/auth', chatId, {
@@ -313,11 +313,11 @@ async function handleStart(message) {
       })
     });
     if (user.isPro) {
-      subscriptionText = '👑 Sizda <b>PRO</b> obuna faol.';
+      subscriptionText = '👑 <b>Obunangiz:</b> PRO tarif faol (barcha imkoniyatlar ochiq).';
     } else if (user.isTrialActive) {
-      subscriptionText = '🎁 7 kunlik bepul muddat faol. Qolgan kunlar: <b>' + user.daysLeft + '</b>.';
+      subscriptionText = '🎁 <b>Sinov davri:</b> 7 kunlik bepul muddat faol. Qolgan kunlar: <b>' + user.daysLeft + '</b>.';
     } else {
-      subscriptionText = '🆓 Siz hozir FREE tarifidasiz. PRO tarifini ilovada ko‘ring.';
+      subscriptionText = '🆓 <b>Obunangiz:</b> FREE tarif (PRO imkoniyatlarini ilovada ochishingiz mumkin).';
     }
   } catch (error) {
     console.error('Auth xatosi:', error.message);
@@ -327,11 +327,24 @@ async function handleStart(message) {
   if (WEBAPP_URL) {
     buttons.push([{ text: '🚀 Ilovani ochish', web_app: { url: WEBAPP_URL } }]);
   }
+  const welcomeText = [
+    'Assalomu alaykum, <b>' + escapeHtml(firstName) + '</b>! 👋',
+    '',
+    '💸 <b>Xarajat AI</b> — shaxsiy moliyaviy aqlli yordamchingizga xush kelibsiz!',
+    '',
+    'Bu yerda siz:',
+    '🔹 Daromad va xarajatlaringizni oson hisoblab borasiz',
+    '🔹 Xarid cheklarini rasmga olib, avtomatik skanerlaysiz',
+    '🔹 AI orqali byudjet tahlili va tejash maslahatlarini olasiz',
+    '',
+    subscriptionText,
+    '',
+    'Xarajatlaringizni kiritish va tahlil qilish uchun pastdagi tugmani bosing:'
+  ].join('\n');
+
   await telegram('sendMessage', {
     chat_id: chatId,
-    text: 'Assalomu alaykum, <b>' + escapeHtml(firstName) + '</b>! 👋\n\n' +
-      '💸 <b>Xarajat AI</b> — shaxsiy moliyaviy yordamchingiz.\n\n' +
-      subscriptionText + '\n\nPRO obunasi chek administrator tomonidan tekshirilib tasdiqlangandan keyin faollashadi.',
+    text: welcomeText,
     parse_mode: 'HTML',
     reply_markup: { inline_keyboard: buttons }
   });
