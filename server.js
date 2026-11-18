@@ -1824,14 +1824,40 @@ app.post('/api/transactions', requireDatabase, requireTelegram, async (req, res)
   if (req.body.clientId && !clientId) return sendError(res, 400, 'Operatsiya identifikatori noto‘g‘ri.');
   const transaction = { user_id: req.user.id, type, amount, category, note, date: date.toISOString() };
   if (clientId) transaction.client_id = clientId;
-  const query = supabase.from('transactions');
-  const { data, error } = clientId
-    ? await query.upsert(transaction, { onConflict: 'user_id,client_id' }).select().single()
-    : await query.insert(transaction).select().single();
-  if (error) {
-    console.error('Operatsiyani saqlash xatosi:', error.message);
-    return sendError(res, 503, 'Operatsiyani saqlab bo‘lmadi.');
+  
+  let data = null;
+  let saveError = null;
+
+  if (clientId) {
+    try {
+      const upsertRes = await supabase.from('transactions')
+        .upsert(transaction, { onConflict: 'user_id,client_id' })
+        .select()
+        .single();
+      if (!upsertRes.error && upsertRes.data) {
+        data = upsertRes.data;
+      } else {
+        saveError = upsertRes.error;
+      }
+    } catch (e) {
+      saveError = e;
+    }
   }
+
+  // Agar client_id ustuni yoki unikal index bo'lmasa, client_idsiz xavfsiz insert qilish
+  if (!data) {
+    delete transaction.client_id;
+    const insertRes = await supabase.from('transactions')
+      .insert(transaction)
+      .select()
+      .single();
+    if (insertRes.error) {
+      console.error('Operatsiyani saqlash xatosi:', insertRes.error.message);
+      return sendError(res, 503, 'Operatsiyani saqlab bo‘lmadi.');
+    }
+    data = insertRes.data;
+  }
+
   return res.status(201).json(data);
 });
 
