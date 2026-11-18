@@ -1965,7 +1965,7 @@ async function buyPro(planId) {
   if (!plan) return toast("Tarif topilmadi. Sahifani yangilang.", "error");
   var planPrice = plan.price_uzs != null ? plan.price_uzs : plan.price;
   var durationMonths = plan.duration_months != null ? plan.duration_months : Math.round(Number(plan.duration_days) / 30);
-  if (!confirm(plan.name + " PRO tarifini " + fmt(planPrice) + " UZS ga tanlaysizmi?")) return;
+  // Removed blocking confirm in Telegram WebApp
   window.proPurchasePending = true;
   var payment;
   var requestFailed = false;

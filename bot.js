@@ -263,6 +263,24 @@ async function handlePaymentReceipt(message) {
       chat_id: chatId,
       text: '✅ Chekingiz qabul qilindi va administratorga yuborildi. Tasdiqlanishi bilan obunangiz faollashadi.'
     });
+    if (!payment) {
+      await telegram('sendMessage', {
+        chat_id: chatId,
+        text: '❓ Iltimos, to‘lov qaysi PRO tarifi uchun amalga oshirilganini pastdagi tugmalardan tanlang:',
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: '1 Oylik PRO (14 990)', callback_data: 'userplan_' + chatId + '_1-month_' + photo.file_id },
+              { text: '3 Oylik PRO (44 990)', callback_data: 'userplan_' + chatId + '_3-month_' + photo.file_id }
+            ],
+            [
+              { text: '6 Oylik PRO (89 990)', callback_data: 'userplan_' + chatId + '_6-month_' + photo.file_id },
+              { text: '1 Yillik PRO (179 990)', callback_data: 'userplan_' + chatId + '_12-month_' + photo.file_id }
+            ]
+          ]
+        }
+      }).catch(() => {});
+    }
   } catch (error) {
     console.error('Chek qabul qilingani haqida xabar yuborilmadi:', error.message);
   }
@@ -423,6 +441,53 @@ async function markManualPaymentApproved(userId, adminId, database = supabase) {
   }
 }
 
+async function handleUserPlanSelection(query, database = supabase) {
+  const data = String(query.data || '');
+  const parts = data.split('_');
+  const userId = Number(parts[1]);
+  const planId = parts[2] || '1-month';
+  const fileId = parts.slice(3).join('_');
+  const months = planDurationMonths(planId);
+  const priceMap = { '1-month': 14990, '3-month': 44990, '6-month': 89990, '12-month': 179990 };
+  const price = priceMap[planId] || (months * 14990);
+
+  if (database) {
+    try {
+      await database.from('payments').insert({
+        user_telegram_id: userId,
+        plan_id: planId,
+        provider: 'manual',
+        amount_uzs: price,
+        duration_months: months,
+        status: 'pending',
+        expires_at: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString()
+      });
+    } catch (e) {
+      console.error('userplan payment save error:', e.message);
+    }
+  }
+
+  const paymentObj = {
+    plan_id: planId,
+    duration_months: months,
+    amount_uzs: price
+  };
+  try {
+    await sendReceiptToAdmins({ from: { id: userId }, chat: { id: userId } }, { file_id: fileId }, paymentObj);
+  } catch (e) {
+    console.error('userplan sendReceiptToAdmins error:', e.message);
+  }
+
+  const message = query.message;
+  if (message && message.chat && message.message_id) {
+    await telegram('editMessageText', {
+      chat_id: message.chat.id,
+      message_id: message.message_id,
+      text: '✅ Rahmat! ' + months + ' oylik PRO tarifi arizangiz administratorga yuborildi. Tasdiqlanishi bilan obunangiz faollashadi.'
+    }).catch(() => {});
+  }
+}
+
 async function handleCallbackQuery(query, database = supabase) {
   const callbackId = query.id;
   const actorId = query.from && query.from.id;
@@ -436,6 +501,11 @@ async function handleCallbackQuery(query, database = supabase) {
     process.env.ADMIN_ID
   );
   await telegram('answerCallbackQuery', { callback_query_id: callbackId }).catch(() => {});
+
+  if (data.startsWith('userplan_')) {
+    await handleUserPlanSelection(query, database);
+    return;
+  }
 
   if (!isAdmin(actorId)) {
     return;
