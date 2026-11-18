@@ -3,7 +3,8 @@ const { createClient } = require('@supabase/supabase-js');
 
 const TOKEN = process.env.BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN || '';
 const WEBAPP_URL = process.env.WEBAPP_URL || '';
-const BACKEND_URL = (process.env.BACKEND_URL || 'http://localhost:3000').replace(/\/+$/, '');
+const PORT = process.env.PORT || 3000;
+const BACKEND_URL = (process.env.BACKEND_URL || ('http://127.0.0.1:' + PORT)).replace(/\/+$/, '');
 const BOT_INTERNAL_SECRET = process.env.BOT_INTERNAL_SECRET || '';
 const ADMIN_ID = process.env.ADMIN_ID || process.env.ADMIN_TELEGRAM_IDS || '';
 const ADMIN_TELEGRAM_IDS = new Set(
@@ -106,6 +107,7 @@ async function sendReceiptToAdmins(message, photo, payment) {
     ? '📩 ' + requestedMonths + ' oylik PRO obunasi uchun ariza keldi'
     : '📩 PRO obunasi uchun ariza keldi') +
     '\nPRO to‘lov cheki\nFoydalanuvchi ID: ' + userId +
+    (requestedMonths ? '\nObuna muddati: ' + requestedMonths + ' oy' : '') +
     '\nTarif ID: ' + planId +
     (payment && payment.amount_uzs ? '\nSumma: ' + payment.amount_uzs + ' UZS' : '') +
     (payment && payment.id ? '\nTo‘lov ID: ' + payment.id : '');
@@ -160,7 +162,43 @@ async function handlePaymentReceipt(message) {
     if (!Array.isArray(payments)) throw new Error('To‘lovlar ro‘yxati noto‘g‘ri javob qaytardi.');
     payment = payments.find(item => item.provider === 'manual' && (item.status === 'pending' || item.status === 'review')) || null;
   } catch (error) {
-    console.error('PRO arizasi muddatini aniqlab bo‘lmadi:', error.message);
+    console.error('PRO arizasi muddatini aniqlab bo‘lmadi (backend):', error.message);
+  }
+
+  // Backend javob bermasa yoki to'lov topilmasa, to'g'ridan-to'g'ri Supabase'dan izlash:
+  if (!payment && supabase) {
+    try {
+      const { data, error } = await supabase.from('payments')
+        .select('id, plan_id, provider, amount_uzs, duration_months, status, created_at')
+        .eq('user_telegram_id', Number(chatId))
+        .eq('provider', 'manual')
+        .in('status', ['pending', 'review'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!error && data) {
+        payment = data;
+      }
+    } catch (fallbackError) {
+      console.error('PRO arizasi muddatini aniqlab bo‘lmadi (supabase):', fallbackError.message);
+    }
+  }
+
+  // Agar hali ham topilmasa, foydalanuvchining eng so'nggi to'lov yozuvini tekshirish:
+  if (!payment && supabase) {
+    try {
+      const { data } = await supabase.from('payments')
+        .select('id, plan_id, provider, amount_uzs, duration_months, status, created_at')
+        .eq('user_telegram_id', Number(chatId))
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (data && data.duration_months) {
+        payment = data;
+      }
+    } catch (e) {
+      console.error('Eng so‘nggi to‘lovni olishda xatolik:', e.message);
+    }
   }
 
   let receiptStored = false;
