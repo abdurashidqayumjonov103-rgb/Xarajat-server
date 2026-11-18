@@ -1996,8 +1996,8 @@ async function buyPro(planId) {
   var cardHolder = payment.card_holder || "XARAJAT AI";
   $("payment-plan-summary").textContent = plan.name + " · " + fmt(amount) + " UZS · " + durationMonths + " oy";
   $("payment-details").innerHTML = (cardNumber && !cardNumber.includes("*")
-    ? '<div><b>' + escape(payment.bank || "Admin kartasi") + '</b></div><div style="font-size:20px;font-weight:800;letter-spacing:.5px;margin:6px 0;display:flex;align-items:center;gap:10px"><span>' +
-      escape(cardNumber) + '</span><button class="pill" type="button" style="cursor:pointer;font-size:12px;padding:4px 10px" onclick="navigator.clipboard.writeText(\'' + escape(cardNumber).replace(/\s+/g, '') + '\');toast(\'Karta raqami nusxalandi!\',\'success\')">Nusxalash</button></div><div>Karta egasi: ' + escape(cardHolder) + '</div>' +
+    ? '<div><b>' + escape(payment.bank || "Admin kartasi") + '</b></div><div style="font-size:20px;font-weight:800;letter-spacing:.5px;margin:6px 0;display:flex;align-items:center;gap:10px"><span style="cursor:pointer;user-select:all" onclick="copyCardNumber(\'' + escape(cardNumber) + '\')">' +
+      escape(cardNumber) + '</span><button class="pill" type="button" style="cursor:pointer;font-size:12px;padding:4px 10px" onclick="copyCardNumber(\'' + escape(cardNumber) + '\')">Nusxalash</button></div><div>Karta egasi: ' + escape(cardHolder) + '</div>' +
       (payment.instructions ? '<p style="margin-top:8px">' + escape(payment.instructions) + '</p>' : '')
     : '<div>Karta rekvizitlari hozircha mavjud emas. Bot orqali administrator bilan bog‘laning.</div>') +
     '<p style="margin-top:8px">To‘lov summasi: <b>' + fmt(amount) + ' UZS</b></p>' +
@@ -2014,6 +2014,45 @@ async function buyPro(planId) {
 function closePaymentToBot() {
   var webApp = window.Telegram && window.Telegram.WebApp;
   if (webApp && typeof webApp.close === "function") webApp.close();
+}
+
+function copyCardNumber(text) {
+  var cleanText = String(text || '').replace(/\s+/g, '');
+  if (!cleanText) return;
+  if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+    navigator.clipboard.writeText(cleanText).then(function() {
+      toast("Karta raqami nusxalandi!", "success");
+    }).catch(function() {
+      fallbackCopy(cleanText);
+    });
+  } else {
+    fallbackCopy(cleanText);
+  }
+
+  function fallbackCopy(val) {
+    try {
+      var textarea = document.createElement("textarea");
+      textarea.value = val;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      textarea.style.top = "0";
+      textarea.style.fontSize = "16px";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      textarea.setSelectionRange(0, 99999);
+      var ok = document.execCommand("copy");
+      document.body.removeChild(textarea);
+      if (ok) {
+        toast("Karta raqami nusxalandi!", "success");
+      } else {
+        prompt("Karta raqamidan nusxa oling:", val);
+      }
+    } catch (e) {
+      prompt("Karta raqamidan nusxa oling:", val);
+    }
+  }
 }
 
 async function submitReceipt() {
