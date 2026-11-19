@@ -2023,6 +2023,320 @@ app.post('/api/pro/request', (req, res) => sendError(
   'PRO xaridi uchun tarifni tanlab, chekni yuboring. Obuna faqat administrator tasdiqlagandan keyin faollashadi.'
 ));
 
+// ==========================================
+// OILAVIY HAMYON (SHARED FAMILY WALLET)
+// ==========================================
+
+async function getFamilyWalletByTelegramId(telegramId) {
+  const { data: userRef } = await supabase
+    .from('app_settings')
+    .select('value')
+    .eq('key', 'family_user:' + telegramId)
+    .maybeSingle();
+
+  if (!userRef || !userRef.value) return null;
+  const walletId = userRef.value;
+
+  const { data: walletData } = await supabase
+    .from('app_settings')
+    .select('value')
+    .eq('key', 'family_wallet:' + walletId)
+    .maybeSingle();
+
+  if (!walletData || !walletData.value) return null;
+  try {
+    return JSON.parse(walletData.value);
+  } catch (_) {
+    return null;
+  }
+}
+
+async function saveFamilyWallet(wallet) {
+  await supabase
+    .from('app_settings')
+    .upsert({
+      key: 'family_wallet:' + wallet.id,
+      value: JSON.stringify(wallet),
+      updated_at: new Date().toISOString()
+    });
+}
+
+app.get('/api/family/my', requireDatabase, requireTelegram, async (req, res) => {
+  try {
+    const telegramId = req.user.telegram_id;
+    const wallet = await getFamilyWalletByTelegramId(telegramId);
+    if (!wallet) return res.json({ wallet: null });
+
+    const memberTgIds = (wallet.members || []).map(m => m.telegramId);
+    const { data: userRows } = await supabase
+      .from('users')
+      .select('id, telegram_id, first_name, username')
+      .in('telegram_id', memberTgIds);
+
+    const userMap = new Map((userRows || []).map(u => [u.telegram_id, u]));
+    const memberUserIds = (userRows || []).map(u => u.id);
+
+    const now = new Date();
+    const monthStart = new Date(Date.now());
+    monthStart.setUTCDate(1);
+    monthStart.setUTCHours(0, 0, 0, 0);
+
+    let memberTxs = [];
+    if (memberUserIds.length > 0) {
+      const { data: txs } = await supabase
+        .from('transactions')
+        .select('*')
+        .in('user_id', memberUserIds)
+        .gte('date', monthStart.toISOString())
+        .order('date', { ascending: false });
+      memberTxs = txs || [];
+    }
+
+    const idToTgMap = new Map((userRows || []).map(u => [u.id, u.telegram_id]));
+    const memberSpentMap = {};
+    let totalSpentMonth = 0;
+
+    for (const tx of memberTxs) {
+      if (tx.type === 'expense') {
+        const tgId = idToTgMap.get(tx.user_id);
+        const amt = Number(tx.amount) || 0;
+        totalSpentMonth += amt;
+        if (tgId) {
+          memberSpentMap[tgId] = (memberSpentMap[tgId] || 0) + amt;
+        }
+      }
+    }
+
+    const budgetMonthly = Number(wallet.budgetMonthly) || 0;
+    const budgetRemaining = Math.max(0, budgetMonthly - totalSpentMonth);
+    const spentPercent = budgetMonthly > 0 ? Math.min(100, Math.round((totalSpentMonth / budgetMonthly) * 100)) : 0;
+
+    let minSpent = Infinity;
+    let minMemberId = null;
+
+    const membersStats = (wallet.members || []).map(m => {
+      const u = userMap.get(m.telegramId);
+      const spent = memberSpentMap[m.telegramId] || 0;
+      if (spent < minSpent) {
+        minSpent = spent;
+        minMemberId = m.telegramId;
+      }
+      return {
+        telegramId: m.telegramId,
+        name: m.name || (u && u.first_name) || 'Oila a’zosi',
+        role: m.role || 'member',
+        spent,
+        percentOfTotal: totalSpentMonth > 0 ? Math.round((spent / totalSpentMonth) * 100) : 0,
+        percentOfBudget: budgetMonthly > 0 ? Math.round((spent / budgetMonthly) * 100) : 0
+      };
+    });
+
+    if (totalSpentMonth > 0 && minMemberId) {
+      for (const m of membersStats) {
+        if (m.telegramId === minMemberId) {
+          m.isChampion = true;
+        }
+      }
+    }
+
+    const recentTransactions = memberTxs.slice(0, 20).map(tx => {
+      const tgId = idToTgMap.get(tx.user_id);
+      const u = tgId ? userMap.get(tgId) : null;
+      return {
+        ...tx,
+        memberName: (u && u.first_name) || 'Oila a’zosi'
+      };
+    });
+
+    return res.json({
+      wallet: {
+        id: wallet.id,
+        name: wallet.name,
+        inviteCode: wallet.inviteCode,
+        isOwner: wallet.ownerTelegramId === telegramId,
+        ownerTelegramId: wallet.ownerTelegramId,
+        budgetMonthly,
+        totalSpentMonth,
+        budgetRemaining,
+        spentPercent,
+        membersCount: (wallet.members || []).length,
+        members: membersStats,
+        recentTransactions
+      }
+    });
+  } catch (error) {
+    console.error('Oilaviy hamyonni olish xatosi:', error.message);
+    return sendError(res, 500, 'Oilaviy hamyonni yuklab bo‘lmadi.');
+  }
+});
+
+app.post('/api/family/create', requireDatabase, requireTelegram, async (req, res) => {
+  try {
+    const telegramId = req.user.telegram_id;
+    const existing = await getFamilyWalletByTelegramId(telegramId);
+    if (existing) {
+      return sendError(res, 400, 'Siz allaqachon oilaviy hamyon a’zosisiz. Avval undan chiqing.');
+    }
+
+    const name = String(req.body.name || 'Bizning Oila').trim().slice(0, 60) || 'Bizning Oila';
+    const budgetMonthly = validatePositiveInteger(req.body.budgetMonthly, 100000000000) || 5000000;
+    const walletId = 'fam_' + Math.random().toString(36).slice(2, 10);
+    const inviteCode = 'OILA-' + Math.floor(1000 + Math.random() * 9000);
+
+    const callerName = req.user.first_name || 'Boshqaruvchi';
+    const wallet = {
+      id: walletId,
+      name,
+      budgetMonthly,
+      inviteCode,
+      ownerTelegramId: telegramId,
+      createdAt: new Date().toISOString(),
+      members: [
+        {
+          telegramId,
+          name: callerName,
+          role: 'owner',
+          joinedAt: new Date().toISOString()
+        }
+      ]
+    };
+
+    await saveFamilyWallet(wallet);
+
+    await supabase.from('app_settings').upsert({
+      key: 'family_user:' + telegramId,
+      value: walletId,
+      updated_at: new Date().toISOString()
+    });
+
+    await supabase.from('app_settings').upsert({
+      key: 'family_invite:' + inviteCode,
+      value: walletId,
+      updated_at: new Date().toISOString()
+    });
+
+    return res.status(201).json({ ok: true, wallet });
+  } catch (error) {
+    console.error('Oilaviy hamyon yaratish xatosi:', error.message);
+    return sendError(res, 500, 'Oilaviy hamyon yaratib bo‘lmadi.');
+  }
+});
+
+app.post('/api/family/join', requireDatabase, requireTelegram, async (req, res) => {
+  try {
+    const telegramId = req.user.telegram_id;
+    const existing = await getFamilyWalletByTelegramId(telegramId);
+    if (existing) {
+      return sendError(res, 400, 'Siz allaqachon oilaviy hamyon a’zosisiz.');
+    }
+
+    const code = String(req.body.inviteCode || '').trim().toUpperCase();
+    if (!code) return sendError(res, 400, 'Taklif kodini kiriting.');
+
+    const { data: codeRow } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'family_invite:' + code)
+      .maybeSingle();
+
+    if (!codeRow || !codeRow.value) {
+      return sendError(res, 404, 'Taklif kodi topilmadi yoki eskirgan.');
+    }
+
+    const walletId = codeRow.value;
+    const { data: walletData } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'family_wallet:' + walletId)
+      .maybeSingle();
+
+    if (!walletData || !walletData.value) {
+      return sendError(res, 404, 'Oilaviy hamyon topilmadi.');
+    }
+
+    const wallet = JSON.parse(walletData.value);
+    const alreadyMember = (wallet.members || []).some(m => m.telegramId === telegramId);
+    if (alreadyMember) {
+      return sendError(res, 400, 'Siz allaqachon ushbu oila a’zosisiz.');
+    }
+
+    if ((wallet.members || []).length >= 10) {
+      return sendError(res, 400, 'Oilaviy hamyonga ko‘pi bilan 10 ta a’zo qo‘shilishi mumkin.');
+    }
+
+    wallet.members.push({
+      telegramId,
+      name: req.user.first_name || 'Oila a’zosi',
+      role: 'member',
+      joinedAt: new Date().toISOString()
+    });
+
+    await saveFamilyWallet(wallet);
+
+    await supabase.from('app_settings').upsert({
+      key: 'family_user:' + telegramId,
+      value: walletId,
+      updated_at: new Date().toISOString()
+    });
+
+    return res.json({ ok: true, wallet });
+  } catch (error) {
+    console.error('Oila hamyoniga qo‘shilish xatosi:', error.message);
+    return sendError(res, 500, 'Oilaviy hamyonga qo‘shilib bo‘lmadi.');
+  }
+});
+
+app.post('/api/family/leave', requireDatabase, requireTelegram, async (req, res) => {
+  try {
+    const telegramId = req.user.telegram_id;
+    const wallet = await getFamilyWalletByTelegramId(telegramId);
+    if (!wallet) return sendError(res, 400, 'Siz oilaviy hamyonda emassiz.');
+
+    wallet.members = (wallet.members || []).filter(m => m.telegramId !== telegramId);
+
+    if (wallet.members.length === 0 || wallet.ownerTelegramId === telegramId) {
+      for (const m of (wallet.members || [])) {
+        await supabase.from('app_settings').delete().eq('key', 'family_user:' + m.telegramId);
+      }
+      await supabase.from('app_settings').delete().eq('key', 'family_wallet:' + wallet.id);
+      await supabase.from('app_settings').delete().eq('key', 'family_invite:' + wallet.inviteCode);
+    } else {
+      await saveFamilyWallet(wallet);
+    }
+
+    await supabase.from('app_settings').delete().eq('key', 'family_user:' + telegramId);
+    return res.json({ ok: true });
+  } catch (error) {
+    console.error('Oilaviy hamyondan chiqish xatosi:', error.message);
+    return sendError(res, 500, 'Oilaviy hamyondan chiqib bo‘lmadi.');
+  }
+});
+
+app.post('/api/family/update', requireDatabase, requireTelegram, async (req, res) => {
+  try {
+    const telegramId = req.user.telegram_id;
+    const wallet = await getFamilyWalletByTelegramId(telegramId);
+    if (!wallet) return sendError(res, 404, 'Oilaviy hamyon topilmadi.');
+    if (wallet.ownerTelegramId !== telegramId) {
+      return sendError(res, 403, 'Faqat oilaviy hamyon egasi byudjetni o‘zgartirishi mumkin.');
+    }
+
+    if (req.body.name) {
+      wallet.name = String(req.body.name).trim().slice(0, 60);
+    }
+    if (req.body.budgetMonthly) {
+      const budget = validatePositiveInteger(req.body.budgetMonthly, 100000000000);
+      if (budget) wallet.budgetMonthly = budget;
+    }
+
+    await saveFamilyWallet(wallet);
+    return res.json({ ok: true, wallet });
+  } catch (error) {
+    console.error('Oila sozlamalarini yangilash xatosi:', error.message);
+    return sendError(res, 500, 'Oila sozlamalarini yangilab bo‘lmadi.');
+  }
+});
+
 app.use('/api', (req, res) => sendError(res, 404, 'API endpoint topilmadi.'));
 
 app.use((error, req, res, next) => {

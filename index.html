@@ -89,7 +89,7 @@ body {
 .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding: 0 4px; }
 .section-title { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; }
 .section-action { font-size: 13px; font-weight: 600; color: var(--primary); background: transparent; border: none; cursor: pointer; padding: 4px 8px; border-radius: 8px; font-family: inherit; }
-.quick-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 20px; }
+.quick-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 20px; }
 .quick-btn { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 6px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; transition: all 150ms; box-shadow: var(--shadow-sm); color: var(--text); font-family: inherit; }
 .quick-btn:active { transform: scale(0.94); }
 .quick-btn-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
@@ -333,6 +333,7 @@ body:not(.dark) .card, body:not(.dark) .tx-row, body:not(.dark) .quick-btn { bac
       <button class="quick-btn" onclick="quickAdd('expense')"><div class="quick-btn-icon" style="background:var(--danger-soft);color:var(--danger)"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div><span class="quick-btn-label">Xarajat</span></button>
       <button class="quick-btn" onclick="quickAdd('income')"><div class="quick-btn-icon" style="background:var(--success-soft);color:var(--success)"><svg viewBox="0 0 24 24"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></div><span class="quick-btn-label">Kirim</span></button>
       <button class="quick-btn" onclick="sahifa('chek')"><div class="quick-btn-icon" style="background:var(--primary-soft);color:var(--primary)"><svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div><span class="quick-btn-label">Skaner</span></button>
+      <button class="quick-btn" onclick="sahifa('family')"><div class="quick-btn-icon" style="background:#f3e8ff;color:#9333ea"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><span class="quick-btn-label">Oila</span></button>
       <button class="quick-btn" onclick="sahifa('ai')"><div class="quick-btn-icon" style="background:var(--warning-soft);color:var(--warning)"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></div><span class="quick-btn-label">AI</span></button>
     </div>
     <div class="section" data-account-data>
@@ -401,6 +402,15 @@ body:not(.dark) .card, body:not(.dark) .tx-row, body:not(.dark) .quick-btn { bac
       <button class="btn" onclick="saveBudget()">Budjetni saqlash</button>
     </div>
     <div class="card"><div class="section-title">Joriy oy holati</div><div id="budget-summary" style="margin-top:10px"></div></div>
+    <div class="card" style="margin-top:14px;background:linear-gradient(135deg,rgba(147,51,234,0.1),rgba(79,70,229,0.06));border-color:rgba(147,51,234,0.25)">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <div>
+          <div style="font-size:15px;font-weight:700">👨‍👩‍👧‍👦 Oilaviy hamyon</div>
+          <div class="tx-meta" style="margin-top:2px">Oila a’zolari bilan birgalikda byudjet yuritish va tejash musobaqasi</div>
+        </div>
+        <button class="btn" style="width:auto;padding:8px 14px;font-size:13px;background:#9333ea;flex-shrink:0" onclick="sahifa('family')">Ochish →</button>
+      </div>
+    </div>
   </div>
 </div>
  <!-- STATS -->
@@ -451,6 +461,7 @@ body:not(.dark) .card, body:not(.dark) .tx-row, body:not(.dark) .quick-btn { bac
       <div class="section-title">Ilova</div>
       <button class="btn btn-ghost" onclick="toggleTheme()">◐ Mavzuni o‘zgartirish</button>
       <button class="btn btn-ghost" onclick="manageCategories()">▦ Kategoriyalarni boshqarish</button>
+      <button class="btn btn-ghost" onclick="sahifa('family')">👨‍👩‍👧‍👦 Oilaviy hamyon va musobaqa</button>
       <button class="btn btn-ghost" onclick="sahifa('notifications')">◉ Bildirishnomalar va to‘lovlar</button>
       <button class="btn btn-ghost" onclick="sahifa('help')">? Yordam va qo‘llab-quvvatlash</button>
       <button class="btn btn-ghost hidden" id="open-admin" onclick="sahifa('admin')">▤ Administrator paneli</button>
@@ -580,6 +591,156 @@ body:not(.dark) .card, body:not(.dark) .tx-row, body:not(.dark) .quick-btn { bac
         <div class="form-group"><label class="form-label" for="admin-income-categories">Kirim kategoriyalari · har qatorda bittasi</label><textarea id="admin-income-categories" class="input" rows="4"></textarea></div>
         <button class="btn btn-ghost" onclick="saveAdminCategories()">Kategoriyalarni saqlash</button>
       </section>
+    </div>
+  </div>
+</div>
+
+<!-- OILAVIY HAMYON -->
+<div id="page-family" class="page hidden">
+  <div class="container" style="padding-top:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h1 style="font-size:22px;font-weight:800;display:flex;align-items:center;gap:8px">
+        <span>👨‍👩‍👧‍👦</span> Oilaviy hamyon
+      </h1>
+      <button class="btn btn-ghost" style="padding:6px 14px;border-radius:12px;font-size:13px;width:auto" onclick="sahifa('home')">← Ortga</button>
+    </div>
+
+    <!-- Unsupported outside Telegram -->
+    <div id="family-unsupported" class="card hidden" style="text-align:center;padding:32px 16px">
+      <div style="font-size:44px;margin-bottom:12px">📱</div>
+      <div style="font-size:18px;font-weight:700;margin-bottom:8px">Telegram bot orqali oching</div>
+      <p class="pro-muted">Oilaviy hamyon va a’zolar hisobi Telegram orqali avtomatik ishlaydi.</p>
+    </div>
+
+    <!-- Main Container -->
+    <div id="family-content">
+      <!-- Loading State -->
+      <div id="family-loading" class="card" style="text-align:center;padding:32px 16px">
+        <div class="receipt-spinner" style="margin:0 auto 12px;width:28px;height:28px"></div>
+        <div class="tx-meta">Oilaviy hamyon yuklanmoqda…</div>
+      </div>
+
+      <!-- No Family Group yet (Create or Join) -->
+      <div id="family-no-group" class="hidden">
+        <div class="card" style="background:linear-gradient(135deg,rgba(147,51,234,0.12),rgba(79,70,229,0.08));border-color:rgba(147,51,234,0.25)">
+          <div style="font-size:36px;margin-bottom:8px">✨</div>
+          <div style="font-size:18px;font-weight:800;margin-bottom:6px">Oila bilan birga tejang!</div>
+          <p class="pro-muted" style="margin-bottom:16px;line-height:1.5">
+            Barcha oila a’zolari xarajatlarini bitta hamyonda jamlang, oylik byudjet limitini belgilang va kim eng ko‘p tejaganini aniqlang!
+          </p>
+          <div style="display:flex;gap:10px">
+            <button class="btn" onclick="toggleFamilyAction('create')" id="btn-tab-create" style="background:#9333ea">+ Oila yaratish</button>
+            <button class="btn btn-ghost" onclick="toggleFamilyAction('join')" id="btn-tab-join" style="width:auto">Qo‘shilish</button>
+          </div>
+        </div>
+
+        <!-- Create Form -->
+        <div id="family-create-box" class="card" style="margin-top:14px">
+          <div class="section-title" style="margin-bottom:12px">Yangi oilaviy hamyon ochish</div>
+          <div class="form-group">
+            <label class="form-label">Oila yoki guruh nomi</label>
+            <input id="family-create-name" class="input" placeholder="Masalan: Bizning Oila" value="Bizning Oila" maxlength="60" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Oylik umumiy byudjet limiti · UZS</label>
+            <input id="family-create-budget" class="input num" type="number" inputmode="numeric" placeholder="5 000 000" value="5000000" />
+          </div>
+          <button class="btn" style="background:#9333ea" onclick="createFamilyWallet()">Hamyonni yaratish</button>
+        </div>
+
+        <!-- Join Form -->
+        <div id="family-join-box" class="card hidden" style="margin-top:14px">
+          <div class="section-title" style="margin-bottom:12px">Mavjud oilaga qo‘shilish</div>
+          <p class="pro-muted" style="margin-bottom:12px">Oila boshlig‘idan taklif kodini oling (Masalan: OILA-4821)</p>
+          <div class="form-group">
+            <label class="form-label">Taklif kodi</label>
+            <input id="family-join-code" class="input" placeholder="OILA-XXXX" style="text-transform:uppercase;font-weight:700;letter-spacing:1px" />
+          </div>
+          <button class="btn" style="background:#9333ea" onclick="joinFamilyWallet()">Oilaga qo‘shilish</button>
+        </div>
+      </div>
+
+      <!-- Family Dashboard -->
+      <div id="family-dashboard" class="hidden">
+        <!-- Family Header Card -->
+        <div class="card" style="background:linear-gradient(135deg,rgba(147,51,234,0.12),rgba(79,70,229,0.08));border-color:rgba(147,51,234,0.3)">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div>
+              <div style="font-size:20px;font-weight:800;color:var(--text)" id="fam-title">Bizning Oila</div>
+              <div class="tx-meta" id="fam-members-count">0 ta a’zo</div>
+            </div>
+            <div style="text-align:right">
+              <div class="status-chip" style="background:rgba(147,51,234,0.15);color:#9333ea;font-weight:800;cursor:pointer" id="fam-code-badge" onclick="copyFamilyCode()">
+                <span id="fam-code">OILA-0000</span> 📋
+              </div>
+            </div>
+          </div>
+
+          <!-- Progress Bar & Budget Overview -->
+          <div style="margin-top:18px">
+            <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-bottom:6px">
+              <span>Sarflandi: <b id="fam-spent">0 UZS</b></span>
+              <span id="fam-percent">0%</span>
+            </div>
+            <div style="height:10px;background:var(--surface-3);border-radius:99px;overflow:hidden">
+              <div id="fam-bar" style="height:100%;width:0%;background:#9333ea;border-radius:99px;transition:width 0.4s ease"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-top:6px">
+              <span>Limit: <b id="fam-budget">0 UZS</b></span>
+              <span>Qoldi: <b id="fam-remaining" style="color:var(--success)">0 UZS</b></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Champion / Incentive Badge -->
+        <div id="fam-champion-card" class="card hidden" style="background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(234,179,8,0.08));border-color:rgba(245,158,11,0.3)">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="font-size:32px">🏆</div>
+            <div>
+              <div style="font-size:14px;font-weight:800;color:#d97706">OILA CHEMPIONI (ENG TEJAMKOR)</div>
+              <div style="font-size:13px;color:var(--text);margin-top:2px" id="fam-champion-text"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Members Leaderboard -->
+        <div class="section" style="margin-top:16px">
+          <div class="section-header">
+            <div>
+              <div class="section-title">Oila a’zolari sarfi</div>
+              <div class="tx-meta">Bu oy kim qancha xarajat qildi</div>
+            </div>
+            <button class="section-action" onclick="shareFamilyInvite()">+ A’zo taklif qilish</button>
+          </div>
+          <div id="fam-members-list" class="admin-list"></div>
+        </div>
+
+        <!-- Recent Family Transactions -->
+        <div class="section" style="margin-top:16px">
+          <div class="section-header">
+            <div>
+              <div class="section-title">Umumiy xarajatlar tarixi</div>
+              <div class="tx-meta">Oila a’zolarining so‘nggi operatsiyalari</div>
+            </div>
+          </div>
+          <div id="fam-tx-list"></div>
+        </div>
+
+        <!-- Actions Card -->
+        <div class="card" style="margin-top:16px">
+          <button class="btn btn-ghost" style="color:var(--primary);border-color:var(--border);margin-bottom:8px" onclick="shareFamilyInvite()">
+            📤 Taklif kodi va havolasini ulashish
+          </button>
+          <div id="fam-owner-controls" class="hidden" style="margin-bottom:8px">
+            <button class="btn btn-ghost" style="margin-bottom:8px" onclick="promptUpdateFamilyBudget()">
+              ✏️ Byudjet limitini o‘zgartirish
+            </button>
+          </div>
+          <button class="btn btn-ghost" style="color:var(--danger);border-color:var(--border)" onclick="leaveFamilyWallet()">
+            🚪 Hamyondan chiqish
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -939,7 +1100,7 @@ function sahifa(nom) {
   if (target) target.classList.remove("hidden");
   
   var navs = document.querySelectorAll(".nav-btn");
-  var activeNav = ["admin", "notifications", "help"].indexOf(nom) >= 0 ? "settings" : nom;
+  var activeNav = ["admin", "notifications", "help", "family"].indexOf(nom) >= 0 ? "settings" : nom;
   for (var j = 0; j < navs.length; j++) {
     navs[j].classList.remove("active");
     if (navs[j].getAttribute("data-page") === activeNav) navs[j].classList.add("active");
@@ -953,6 +1114,7 @@ function sahifa(nom) {
   if (nom === "admin") loadAdminPanel();
   if (nom === "notifications") loadNotifications();
   if (nom === "help") loadHelpSettings();
+  if (nom === "family") loadFamilyPage();
 }
 
 function toggleTheme() {
@@ -2359,6 +2521,212 @@ async function loadNotifications() {
   } catch (error) {
     container.innerHTML = '<div class="empty"><div class="empty-title">To‘lov tarixi vaqtincha yuklanmadi</div><div class="empty-desc">Birozdan so‘ng qayta urinib ko‘ring.</div></div>';
     toast(friendlyErrorMessage(error), "error");
+  }
+}
+
+// ==========================================
+// OILAVIY HAMYON (CLIENT LOGIC)
+// ==========================================
+var currentFamilyWallet = null;
+
+function toggleFamilyAction(mode) {
+  var isCreate = mode === "create";
+  $("family-create-box").classList.toggle("hidden", !isCreate);
+  $("family-join-box").classList.toggle("hidden", isCreate);
+  var btnCreate = $("btn-tab-create");
+  var btnJoin = $("btn-tab-join");
+  if (btnCreate && btnJoin) {
+    btnCreate.className = isCreate ? "btn" : "btn btn-ghost";
+    btnCreate.style.background = isCreate ? "#9333ea" : "";
+    btnJoin.className = isCreate ? "btn btn-ghost" : "btn";
+    btnJoin.style.background = isCreate ? "" : "#9333ea";
+  }
+}
+
+async function loadFamilyPage() {
+  if (!telegramInitData()) {
+    $("family-unsupported").classList.remove("hidden");
+    $("family-content").classList.add("hidden");
+    return;
+  }
+  $("family-unsupported").classList.add("hidden");
+  $("family-content").classList.remove("hidden");
+  $("family-loading").classList.remove("hidden");
+  $("family-no-group").classList.add("hidden");
+  $("family-dashboard").classList.add("hidden");
+
+  try {
+    var res = await apiRequest("/api/family/my");
+    $("family-loading").classList.add("hidden");
+    if (!res || !res.wallet) {
+      currentFamilyWallet = null;
+      $("family-no-group").classList.remove("hidden");
+      $("family-dashboard").classList.add("hidden");
+    } else {
+      currentFamilyWallet = res.wallet;
+      $("family-no-group").classList.add("hidden");
+      $("family-dashboard").classList.remove("hidden");
+      renderFamilyDashboard(res.wallet);
+    }
+  } catch (error) {
+    $("family-loading").classList.add("hidden");
+    toast("Oilaviy hamyonni yuklab bo‘lmadi: " + friendlyErrorMessage(error), "error");
+  }
+}
+
+function renderFamilyDashboard(wallet) {
+  $("fam-title").textContent = wallet.name;
+  $("fam-members-count").textContent = wallet.membersCount + " ta a’zo";
+  $("fam-code").textContent = wallet.inviteCode;
+
+  var spent = Number(wallet.totalSpentMonth) || 0;
+  var budget = Number(wallet.budgetMonthly) || 0;
+  var remaining = Number(wallet.budgetRemaining) || 0;
+  var percent = Number(wallet.spentPercent) || 0;
+
+  $("fam-spent").textContent = fmt(spent) + " UZS";
+  $("fam-budget").textContent = fmt(budget) + " UZS";
+  $("fam-remaining").textContent = fmt(remaining) + " UZS";
+  $("fam-percent").textContent = percent + "%";
+
+  var bar = $("fam-bar");
+  bar.style.width = Math.min(100, Math.max(0, percent)) + "%";
+  if (percent >= 90) bar.style.background = "var(--danger)";
+  else if (percent >= 75) bar.style.background = "var(--warning)";
+  else bar.style.background = "#9333ea";
+
+  var champion = (wallet.members || []).find(function(m) { return m.isChampion; });
+  var champCard = $("fam-champion-card");
+  if (champion && spent > 0) {
+    champCard.classList.remove("hidden");
+    $("fam-champion-text").innerHTML = "Bu oy <b>" + escape(champion.name) + "</b> eng kam (" + fmt(champion.spent) + " UZS) xarajat qilib, oila byudjetini eng ko‘p tejamoqda! 👏";
+  } else {
+    champCard.classList.add("hidden");
+  }
+
+  var membersHtml = "";
+  for (var i = 0; i < (wallet.members || []).length; i++) {
+    var m = wallet.members[i];
+    var isOwner = m.role === "owner";
+    var initials = (m.name || "OA").split(/\s+/).slice(0, 2).map(function(p) { return p.charAt(0).toUpperCase(); }).join("") || "OA";
+    membersHtml += '<div class="admin-list-item" style="display:flex;align-items:center;justify-content:space-between;gap:12px">';
+    membersHtml += '<div style="display:flex;align-items:center;gap:10px;min-width:0">';
+    membersHtml += '<div class="profile-avatar" style="width:38px;height:38px;font-size:14px;background:rgba(147,51,234,0.15);color:#9333ea;flex-shrink:0">' + escape(initials) + '</div>';
+    membersHtml += '<div style="min-width:0">';
+    membersHtml += '<div style="font-weight:700;font-size:14px;display:flex;align-items:center;gap:6px">' + escape(m.name) + (isOwner ? ' <span class="status-chip" style="font-size:10px;padding:2px 6px">Boshliq</span>' : '') + (m.isChampion ? ' 🏆' : '') + '</div>';
+    membersHtml += '<div class="tx-meta">Ulush: ' + m.percentOfTotal + '% (' + m.percentOfBudget + '% byudjetdan)</div>';
+    membersHtml += '</div></div>';
+    membersHtml += '<div style="text-align:right;flex-shrink:0">';
+    membersHtml += '<div style="font-weight:800;font-size:14px;color:var(--danger)">−' + fmt(m.spent) + '</div>';
+    membersHtml += '<div class="tx-meta">UZS</div>';
+    membersHtml += '</div></div>';
+  }
+  $("fam-members-list").innerHTML = membersHtml || '<div class="admin-list-item">A’zolar yo‘q</div>';
+
+  var txHtml = "";
+  var recent = wallet.recentTransactions || [];
+  if (recent.length === 0) {
+    txHtml = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-title">Bu oy hali xarajat qilinmadi</div></div>';
+  } else {
+    for (var j = 0; j < recent.length; j++) {
+      var tx = recent[j];
+      txHtml += '<div class="tx-row">';
+      txHtml += '<div class="tx-icon expense">' + emojiOf(tx.category) + '</div>';
+      txHtml += '<div class="tx-info"><div class="tx-name">' + escape(tx.note || tx.category) + '</div><div class="tx-meta">' + escape(tx.memberName) + ' · ' + escape(tx.category) + '</div></div>';
+      txHtml += '<div class="tx-amount">−' + fmt(tx.amount) + '</div>';
+      txHtml += '</div>';
+    }
+  }
+  $("fam-tx-list").innerHTML = txHtml;
+  $("fam-owner-controls").classList.toggle("hidden", !wallet.isOwner);
+}
+
+async function createFamilyWallet() {
+  var name = $("family-create-name").value.trim() || "Bizning Oila";
+  var budget = Number($("family-create-budget").value);
+  if (!Number.isSafeInteger(budget) || budget <= 0) {
+    return toast("Oylik byudjet summasini to‘g‘ri kiriting.", "error");
+  }
+  try {
+    var res = await apiRequest("/api/family/create", {
+      method: "POST",
+      body: JSON.stringify({ name: name, budgetMonthly: budget })
+    });
+    toast("Oilaviy hamyon yaratildi! A’zolarni taklif qilishingiz mumkin.", "success");
+    await loadFamilyPage();
+  } catch (e) {
+    toast(friendlyErrorMessage(e), "error");
+  }
+}
+
+async function joinFamilyWallet() {
+  var code = $("family-join-code").value.trim().toUpperCase();
+  if (!code) return toast("Taklif kodini kiriting.", "error");
+  try {
+    var res = await apiRequest("/api/family/join", {
+      method: "POST",
+      body: JSON.stringify({ inviteCode: code })
+    });
+    toast("Oila hamyoniga muvaffaqiyatli qo‘shildingiz!", "success");
+    await loadFamilyPage();
+  } catch (e) {
+    toast(friendlyErrorMessage(e), "error");
+  }
+}
+
+async function copyFamilyCode() {
+  if (!currentFamilyWallet || !currentFamilyWallet.inviteCode) return;
+  var code = currentFamilyWallet.inviteCode;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(code).then(function() {
+      toast("Taklif kodi nusxalandi: " + code, "success");
+    }).catch(function() {
+      prompt("Taklif kodi:", code);
+    });
+  } else {
+    prompt("Taklif kodi:", code);
+  }
+}
+
+function shareFamilyInvite() {
+  if (!currentFamilyWallet) return;
+  var code = currentFamilyWallet.inviteCode;
+  var name = currentFamilyWallet.name || "Bizning Oila";
+  var text = "Salom! Men Xarajat AI ilovasida «" + name + "» oilaviy hamyonini ochdim. Birgalikda xarajatlarni hisoblash va tejash uchun quyidagi kod orqali qo‘shiling:\n\n🔑 Taklif kodi: " + code;
+  if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openTelegramLink) {
+    window.Telegram.WebApp.openTelegramLink("https://t.me/share/url?url=&text=" + encodeURIComponent(text));
+  } else {
+    copyFamilyCode();
+  }
+}
+
+async function promptUpdateFamilyBudget() {
+  if (!currentFamilyWallet) return;
+  var current = currentFamilyWallet.budgetMonthly || 5000000;
+  var val = prompt("Yangi oylik byudjet limitini kiriting (UZS):", current);
+  if (!val) return;
+  var num = Number(val);
+  if (!Number.isSafeInteger(num) || num <= 0) return toast("Noto‘g‘ri summa kiritildi.", "error");
+  try {
+    await apiRequest("/api/family/update", {
+      method: "POST",
+      body: JSON.stringify({ budgetMonthly: num })
+    });
+    toast("Oila byudjeti yangilandi.", "success");
+    await loadFamilyPage();
+  } catch (e) {
+    toast(friendlyErrorMessage(e), "error");
+  }
+}
+
+async function leaveFamilyWallet() {
+  if (!confirm("Haqiqatan ham ushbu oilaviy hamyondan chiqmoqchimisiz?")) return;
+  try {
+    await apiRequest("/api/family/leave", { method: "POST", body: "{}" });
+    toast("Oilaviy hamyondan chiqildi.", "success");
+    await loadFamilyPage();
+  } catch (e) {
+    toast(friendlyErrorMessage(e), "error");
   }
 }
 
