@@ -314,9 +314,11 @@ async function handleStart(message) {
       })
     });
     if (user.isPro) {
-      subscriptionText = '👑 <b>Obunangiz:</b> PRO tarif faol (barcha imkoniyatlar ochiq).';
-    } else if (user.isTrialActive) {
-      subscriptionText = '🎁 <b>Sinov davri:</b> 7 kunlik bepul muddat faol. Qolgan kunlar: <b>' + user.daysLeft + '</b>.';
+      if (user.isTrialActive || user.pro_status === 'trial') {
+        subscriptionText = '🎁 <b>Obunangiz:</b> 7 kunlik bepul PRO sinov tarifi faol! Qolgan kunlar: <b>' + (user.daysLeft || 7) + '</b>.';
+      } else {
+        subscriptionText = '👑 <b>Obunangiz:</b> PRO tarif faol (barcha imkoniyatlar ochiq).';
+      }
     } else {
       subscriptionText = '🆓 <b>Obunangiz:</b> FREE tarif (PRO imkoniyatlarini ilovada ochishingiz mumkin).';
     }

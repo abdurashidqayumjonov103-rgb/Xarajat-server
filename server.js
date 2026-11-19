@@ -551,26 +551,61 @@ app.post('/api/auth', requireDatabase, async (req, res) => {
 
     const firstName = String(identity.profile.first_name || identity.profile.firstName || '').slice(0, 100);
     const username = String(identity.profile.username || '').slice(0, 64);
+    const now = new Date();
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id, telegram_id, first_name, username, is_pro, pro_status, pro_until, pro_expires_at, created_at')
+      .eq('telegram_id', identity.telegramId)
+      .maybeSingle();
+
+    const createdAt = existingUser && existingUser.created_at ? new Date(existingUser.created_at) : now;
+    const trialEndsAt = new Date(createdAt.getTime() + 7 * 86400000);
+    const isTrial = now.getTime() < trialEndsAt.getTime();
+
+    let isPro = false;
+    let proStatus = 'free';
+    let proExpiresAt = null;
+
+    if (existingUser && existingUser.is_pro && (existingUser.pro_expires_at || existingUser.pro_until)) {
+      const exp = new Date(existingUser.pro_expires_at || existingUser.pro_until).getTime();
+      if (Number.isFinite(exp) && exp > now.getTime()) {
+        isPro = true;
+        proStatus = existingUser.pro_status || 'pro';
+        proExpiresAt = existingUser.pro_expires_at || existingUser.pro_until;
+      }
+    }
+
+    if (!isPro && isTrial) {
+      isPro = true;
+      proStatus = 'trial';
+      proExpiresAt = trialEndsAt.toISOString();
+    }
+
     const { data: user, error } = await supabase
       .from('users')
       .upsert({
         telegram_id: identity.telegramId,
         first_name: firstName,
         username: username || null,
-        last_active_at: new Date().toISOString()
+        is_pro: isPro,
+        pro_status: proStatus,
+        pro_expires_at: proExpiresAt,
+        pro_until: proExpiresAt,
+        last_active_at: now.toISOString()
       }, { onConflict: 'telegram_id' })
       .select('id, telegram_id, first_name, username, is_pro, pro_status, pro_until, pro_expires_at, created_at')
       .single();
     if (error) throw error;
 
-    const now = new Date();
-    const isPro = hasActiveReceiptPro(user, now);
-    const trialEndsAt = new Date(new Date(user.created_at).getTime() + 7 * 86400000);
+    const daysLeft = proExpiresAt ? Math.max(0, Math.ceil((new Date(proExpiresAt).getTime() - now.getTime()) / 86400000)) : 0;
     return res.json({
       ...user,
       isPro,
-      isTrialActive: !isPro && now < trialEndsAt,
-      daysLeft: Math.max(0, Math.ceil((trialEndsAt - now) / 86400000)),
+      is_pro: isPro,
+      pro_status: proStatus,
+      pro_expires_at: proExpiresAt,
+      isTrialActive: isTrial,
+      daysLeft,
       isAdmin: ADMIN_TELEGRAM_IDS.has(String(identity.telegramId))
     });
   } catch (error) {
@@ -653,49 +688,43 @@ app.get('/api/public-settings', requireDatabase, async (req, res) => {
 
 app.get('/api/subscription/status', requireDatabase, requireTelegram, async (req, res) => {
   try {
-    const { data: subscription, error } = await supabase
-      .from('subscriptions')
-      .select('status, starts_at, expires_at, ends_at, source')
-      .eq('user_telegram_id', req.user.telegram_id)
-      .maybeSingle();
-    if (error) throw error;
     const now = new Date();
-    const subscriptionExpiryValue = subscription && (subscription.expires_at || subscription.ends_at);
-    const subscriptionExpiry = subscriptionExpiryValue ? new Date(subscriptionExpiryValue) : null;
+    const userCreatedAt = req.user.created_at ? new Date(req.user.created_at) : now;
+    const trialEndsAt = new Date(userCreatedAt.getTime() + 7 * 86400000);
+    const isTrial = now.getTime() < trialEndsAt.getTime();
+
     const userExpiryValue = req.user.pro_expires_at || req.user.pro_until || req.user.pro_expires;
-    const userExpiresAt = userExpiryValue ? new Date(userExpiryValue) : null;
+    const userExpiresAt = userExpiryValue ? new Date(userExpiryValue) : (isTrial ? trialEndsAt : null);
     const userIsActive = hasActiveReceiptPro(req.user, now);
-    const subscriptionIsCurrentlyActive = Boolean(
-      subscription && subscription.status === 'active' &&
-      subscriptionExpiry && Number.isFinite(subscriptionExpiry.getTime()) && subscriptionExpiry > now
-    );
-    const isPro = userIsActive;
-    const hasExpired = Boolean(
-      (userExpiresAt &&
-        Number.isFinite(userExpiresAt.getTime()) && userExpiresAt <= now) ||
-      (subscription && subscription.status === 'active' && subscriptionExpiry &&
-        Number.isFinite(subscriptionExpiry.getTime()) && subscriptionExpiry <= now)
-    );
-    if (subscription && subscription.status === 'active' && !subscriptionIsCurrentlyActive) {
-      const { error: expireError } = await supabase.from('subscriptions')
-        .update({ status: 'expired', updated_at: new Date().toISOString() })
-        .eq('user_telegram_id', req.user.telegram_id);
-      if (expireError) throw expireError;
+
+    const isPro = userIsActive || isTrial;
+    const hasExpired = !isPro && userExpiresAt && userExpiresAt.getTime() <= now.getTime();
+
+    if (isTrial && !req.user.is_pro) {
+      await supabase.from('users')
+        .update({
+          is_pro: true,
+          pro_status: 'trial',
+          pro_expires_at: trialEndsAt.toISOString(),
+          pro_until: trialEndsAt.toISOString()
+        })
+        .eq('telegram_id', req.user.telegram_id)
+        .catch(() => {});
+    } else if (req.user.is_pro === true && !isPro) {
+      await supabase.from('users')
+        .update({ is_pro: false, pro_status: 'expired' })
+        .eq('telegram_id', req.user.telegram_id)
+        .catch(() => {});
     }
-    if (req.user.is_pro === true && !userIsActive) {
-      const { error: userExpireError } = await supabase.from('users')
-        .update({ is_pro: false, pro_status: 'free' })
-        .eq('telegram_id', req.user.telegram_id);
-      if (userExpireError) throw userExpireError;
-    }
-    const expiresAt = userExpiresAt || (subscriptionIsCurrentlyActive ? subscriptionExpiry : null);
+
+    const expiresAt = userExpiresAt;
     return res.json({
       isPro,
-      status: isPro ? 'active' : (hasExpired ? 'expired' : 'free'),
+      status: isTrial ? 'trial' : (isPro ? 'active' : (hasExpired ? 'expired' : 'free')),
+      isTrial,
       expired: hasExpired,
-      startsAt: isPro && subscription ? subscription.starts_at : null,
       expiresAt: expiresAt ? expiresAt.toISOString() : null,
-      daysLeft: isPro && expiresAt ? Math.max(0, Math.ceil((expiresAt - now) / 86400000)) : 0
+      daysLeft: expiresAt && isPro ? Math.max(0, Math.ceil((expiresAt.getTime() - now.getTime()) / 86400000)) : 0
     });
   } catch (error) {
     console.error('Obuna holati xatosi:', error.message);

@@ -879,7 +879,7 @@ function cachedReceiptScannerProAccess() {
     return clientProIsActive();
   }
   var expiry = localUserProExpiry(currentUser);
-  return Boolean(currentUser && currentUser.is_pro === true && proExpiryIsActive(expiry));
+  return Boolean(currentUser && (currentUser.is_pro === true || currentUser.isTrialActive || currentUser.pro_status === "trial") && proExpiryIsActive(expiry));
 }
 
 function setReceiptScannerProAccess(isPro) {
@@ -1621,18 +1621,22 @@ function renderProfile() {
   $("profile-id").textContent = userId ? "Telegram ID · " + userId : "Telegram profilingiz";
   var activePro = clientProIsActive();
   var expiredPro = Boolean(window.currentSubscription && window.currentSubscription.status === "expired");
-  $("profile-plan").textContent = activePro ? "PRO" : "FREE";
-  $("profile-plan").classList.toggle("pro-chip", activePro);
+  var isTrial = Boolean(
+    (window.currentSubscription && (window.currentSubscription.status === "trial" || window.currentSubscription.isTrial)) ||
+    (currentUser && (currentUser.pro_status === "trial" || currentUser.isTrialActive))
+  );
+  $("profile-plan").textContent = isTrial ? "PRO (7 kunlik sinov)" : (activePro ? "PRO" : "FREE");
+  $("profile-plan").classList.toggle("pro-chip", activePro || isTrial);
   var proUntil = $("profile-pro-until");
   var expiresAt = currentUser && (currentUser.pro_expires_at || currentUser.pro_until || currentUser.pro_expires) ||
     window.currentSubscription && window.currentSubscription.expiresAt;
   if (proUntil) {
-    proUntil.textContent = activePro && expiresAt
-      ? "Faol: " + formatDate(expiresAt) + " gacha"
+    proUntil.textContent = (activePro || isTrial) && expiresAt
+      ? "Faol: " + formatDate(expiresAt) + " gacha" + (isTrial ? " (bepul sinov)" : "")
       : expiredPro
         ? "PRO obunangiz muddati tugagan. Qayta faollashtirish uchun obuna sotib oling."
         : "";
-    proUntil.classList.toggle("hidden", !(activePro && expiresAt) && !expiredPro);
+    proUntil.classList.toggle("hidden", !(activePro || (isTrial && expiresAt)) && !expiredPro);
     proUntil.classList.toggle("pro-expired", expiredPro);
   }
   if (currentUser && currentUser.isAdmin) $("open-admin").classList.remove("hidden");
