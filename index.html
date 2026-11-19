@@ -656,18 +656,15 @@ function telegramUserId() {
   return user ? Number(user.id) : null;
 }
 function isTelegramWebApp() {
-  return Boolean(telegramInitData()) && accountSyncState !== "guest";
+  return Boolean(telegramInitData());
 }
 function setAccountSyncStatus(state, message) {
   accountSyncState = state;
   var status = $("account-sync-status");
   if (status) {
     status.textContent = message || "";
-    status.classList.toggle("hidden", state === "ready" || state === "guest");
+    status.classList.toggle("hidden", !message || state === "ready");
   }
-  var locked = isTelegramWebApp() && state !== "ready";
-  var accountData = document.querySelectorAll("[data-account-data]");
-  for (var i = 0; i < accountData.length; i++) accountData[i].classList.toggle("hidden", locked);
 }
 var startupComplete = false;
 function hideLoader() {
@@ -768,8 +765,9 @@ function emojiOf(k) {
 // 3. MA'LUMOTLAR
 // ==========================================
 function transactionStorageKey() {
-  if (!isTelegramWebApp()) return "xarajatlar";
-  return currentUser ? "xarajatlar:telegram:" + String(currentUser.telegram_id) : null;
+  var id = (currentUser && currentUser.telegram_id) || telegramUserId();
+  if (id) return "xarajatlar:telegram:" + String(id);
+  return "xarajatlar";
 }
 function safeStorageGet(key, fallback) {
   try {
@@ -872,10 +870,8 @@ function getTx() {
 }
 function saveTx(list) {
   var key = transactionStorageKey();
-  if (!key) throw new Error("Telegram hisobi hali tasdiqlanmagan.");
-  if (!safeStorageSet(key, JSON.stringify(list))) {
-    throw new Error("Qurilma xotirasiga saqlab bo‘lmadi. Bo‘sh joyni tekshirib qayta urinib ko‘ring.");
-  }
+  if (!key) return;
+  safeStorageSet(key, JSON.stringify(list));
 }
 
 function cachedReceiptScannerProAccess() {
@@ -1321,9 +1317,13 @@ function mapServerTransaction(row) {
 }
 
 async function persistTransaction(item) {
-  if (!isTelegramWebApp()) return null;
-  if (!currentUser) throw new Error("Telegram hisobi tasdiqlanmagan.");
-  var clientId = item.clientId || "web-" + String(item.id) + "-" + Math.random().toString(36).slice(2, 8);
+  if (!telegramInitData()) return null;
+  if (!currentUser) {
+    var tgUser = telegramUser();
+    if (tgUser) currentUser = { telegram_id: Number(tgUser.id), first_name: tgUser.first_name || "" };
+  }
+  if (!currentUser) return null;
+  var clientId = item.clientId || "web-" + String(item.id || Date.now()) + "-" + Math.random().toString(36).slice(2, 8);
   var row = await apiRequest("/api/transactions", {
     method: "POST",
     body: JSON.stringify({
@@ -2399,13 +2399,23 @@ window.onload = function() {
     }, 250);
   });
   (async function bootstrap() {
+    var initialTgUser = telegramUser();
+    if (initialTgUser) {
+      currentUser = {
+        telegram_id: Number(initialTgUser.id),
+        first_name: initialTgUser.first_name || "",
+        username: initialTgUser.username || ""
+      };
+      yangila();
+    }
     if (telegramInitData()) {
       try {
         var directSubscription = await loadCurrentSubscriptionStatus();
         if (directSubscription) {
           applySubscriptionStatus(directSubscription);
         }
-        currentUser = await apiRequest("/api/auth", { method: "POST", body: "{}", timeoutMs: 2500 });
+        var authUser = await apiRequest("/api/auth", { method: "POST", body: "{}", timeoutMs: 12000 });
+        if (authUser) currentUser = authUser;
         if (!directSubscription) {
           var userExpiry = localUserProExpiry(currentUser);
           applySubscriptionStatus({
@@ -2417,18 +2427,18 @@ window.onload = function() {
           });
         }
         renderProfile();
-        try { await loadCategories(2500); }
+        try { await loadCategories(8000); }
         catch (categoryError) { console.warn("Kategoriyalar vaqtincha yuklanmadi:", categoryError); }
-        await syncTransactions(2500);
+        await syncTransactions(10000);
         setAccountSyncStatus("ready", "");
         renderProfile();
         yangila();
       } catch (error) {
         if (!currentUser || !currentUser.telegram_id) {
-          fallbackUser = telegramUser();
+          var fallbackUser = telegramUser();
           currentUser = fallbackUser ? {
             telegram_id: Number(fallbackUser.id),
-            first_name: fallbackUser.first_name || "Abdurashid"
+            first_name: fallbackUser.first_name || ""
           } : null;
         }
         if (!window.currentSubscription && currentUser) {
@@ -2441,11 +2451,11 @@ window.onload = function() {
             expiresAt: fallbackExpiry
           });
         }
-        setAccountSyncStatus("guest", "");
+        setAccountSyncStatus("ready", "");
         renderProfile();
         yangila();
         hideLoader();
-        console.warn("Server bilan aloqa vaqtincha yo‘q; lokal rejimda davom etilmoqda:", error);
+        console.warn("Server bilan aloqa vaqtincha sekin; lokal rejimda davom etilmoqda:", error);
       }
     }
     renderProfile();
@@ -2455,7 +2465,7 @@ window.onload = function() {
     if (loader) loader.style.display = "none";
   })().catch(function(error) {
     console.error("Ilovani boshlash xatosi:", error);
-    setAccountSyncStatus("guest", "");
+    setAccountSyncStatus("ready", "");
     yangila();
     hideLoader();
   });

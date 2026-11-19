@@ -549,7 +549,7 @@ app.post('/api/auth', requireDatabase, async (req, res) => {
       return sendError(res, 401, 'Telegram foydalanuvchisi tekshirilmadi.');
     }
 
-    const firstName = String(identity.profile.first_name || '').slice(0, 100);
+    const firstName = String(identity.profile.first_name || identity.profile.firstName || '').slice(0, 100);
     const username = String(identity.profile.username || '').slice(0, 64);
     const { data: user, error } = await supabase
       .from('users')
@@ -1639,9 +1639,17 @@ app.put('/api/admin/system-settings', requireDatabase, requireTelegram, requireA
 });
 
 app.get('/api/admin/revenue', requireDatabase, requireTelegram, requireAdmin, async (req, res) => {
-  const { data, error } = await supabase.rpc('subscription_revenue');
-  if (error) return sendError(res, 503, 'Obuna daromadini hisoblab bo‘lmadi.');
-  return res.json(data);
+  try {
+    const { data, error } = await supabase.rpc('subscription_revenue');
+    if (!error && data) return res.json(data);
+  } catch (_) {}
+  try {
+    const { data: paidPayments } = await supabase.from('payments').select('amount_uzs').eq('status', 'paid');
+    const totalUzs = (paidPayments || []).reduce((acc, p) => acc + (Number(p.amount_uzs) || 0), 0);
+    return res.json({ totalUzs });
+  } catch (error) {
+    return sendError(res, 503, 'Obuna daromadini hisoblab bo‘lmadi.');
+  }
 });
 
 app.post('/api/admin/subscriptions/grant', requireDatabase, requireTelegram, requireAdmin, async (req, res) => {
@@ -1724,8 +1732,7 @@ app.get('/api/admin/stats', requireDatabase, requireTelegram, requireAdmin, asyn
       { count: reviewPayments, error: reviewError },
       { count: rejectedPayments, error: rejectedError },
       { count: approvedPayments, error: approvedError },
-      { data: users, error: usersError },
-      { data: revenue, error: revenueError }
+      { data: users, error: usersError }
     ] = await Promise.all([
       supabase.from('users').select('*', { count: 'exact', head: true }),
       supabase.from('users').select('*', { count: 'exact', head: true })
@@ -1737,8 +1744,7 @@ app.get('/api/admin/stats', requireDatabase, requireTelegram, requireAdmin, asyn
       supabase.from('payments').select('*', { count: 'exact', head: true }).eq('status', 'rejected'),
       supabase.from('payments').select('*', { count: 'exact', head: true }).eq('status', 'paid'),
       supabase.from('users').select('telegram_id, first_name, username, is_pro, pro_until, pro_expires_at, last_active_at, created_at')
-        .order('created_at', { ascending: false }).limit(20),
-      supabase.rpc('subscription_revenue')
+        .order('created_at', { ascending: false }).limit(20)
     ]);
     if (countError) throw countError;
     if (activeError) throw activeError;
@@ -1748,7 +1754,19 @@ app.get('/api/admin/stats', requireDatabase, requireTelegram, requireAdmin, asyn
     if (rejectedError) throw rejectedError;
     if (approvedError) throw approvedError;
     if (usersError) throw usersError;
-    if (revenueError) throw revenueError;
+
+    let totalRevenueUzs = 0;
+    try {
+      const revRes = await supabase.rpc('subscription_revenue');
+      if (!revRes.error && revRes.data) totalRevenueUzs = Number(revRes.data.totalUzs) || 0;
+    } catch (_) {}
+    if (!totalRevenueUzs) {
+      try {
+        const { data: paidPayments } = await supabase.from('payments').select('amount_uzs').eq('status', 'paid');
+        totalRevenueUzs = (paidPayments || []).reduce((acc, p) => acc + (Number(p.amount_uzs) || 0), 0);
+      } catch (_) {}
+    }
+
     return res.json({
       userCount,
       activeUserCount,
@@ -1757,7 +1775,7 @@ app.get('/api/admin/stats', requireDatabase, requireTelegram, requireAdmin, asyn
       reviewPayments,
       rejectedPayments,
       approvedPayments,
-      totalRevenueUzs: Number(revenue.totalUzs) || 0,
+      totalRevenueUzs,
       users
     });
   } catch (error) {

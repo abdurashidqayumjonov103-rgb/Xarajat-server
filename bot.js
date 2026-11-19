@@ -309,6 +309,7 @@ async function handleStart(message) {
       body: JSON.stringify({
         telegramId: chatId,
         firstName,
+        first_name: firstName,
         username: message.from.username || ''
       })
     });
