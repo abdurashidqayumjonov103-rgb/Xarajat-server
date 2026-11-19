@@ -2254,6 +2254,20 @@ async function submitReceipt() {
   }
 }
 
+function selectAdminUser(telegramId) {
+  if (!telegramId) return;
+  var input = $("admin-telegram-id");
+  if (input) {
+    input.value = telegramId;
+    input.focus();
+    toast("Foydalanuvchi " + telegramId + " tanlandi. Muddatni tanlab, 'PRO berish' tugmasini bosing.", "info");
+    var sec = $("admin-subscriptions-section");
+    if (sec && typeof sec.scrollIntoView === "function") {
+      sec.scrollIntoView({ behavior: "smooth" });
+    }
+  }
+}
+
 async function adminSubscription(action) {
   var telegramId = Number($("admin-telegram-id").value);
   var months = Number($("admin-months").value);
@@ -2353,14 +2367,16 @@ async function loadAdminPanel() {
 
     $("admin-users").innerHTML = users.length ? users.map(function(item) {
       var user = item.user || {};
-      return '<div class="admin-list-item">' + escape(user.first_name || "Foydalanuvchi") +
-        ' · ID ' + Number(item.user_telegram_id) + ' · ' + formatDate(item.expires_at) +
-        ' gacha</div>';
+      var tid = Number(item.user_telegram_id);
+      return '<div class="admin-list-item" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center" onclick="selectAdminUser(' + tid + ')"><div><b>' + escape(user.first_name || "Foydalanuvchi") +
+        '</b><div class="tx-meta">ID <b>' + tid + '</b> · ' + formatDate(item.expires_at) +
+        ' gacha</div></div><button class="pill" type="button" style="padding:4px 8px;font-size:12px">Tanlash ➔</button></div>';
     }).join("") : '<div class="admin-list-item">Faol PRO obunalar yo‘q</div>';
     $("admin-recent-users").innerHTML = stats.users.length ? stats.users.map(function(user) {
-      return '<div class="admin-list-item"><b>' + escape(user.first_name || "Foydalanuvchi") +
-        '</b><div class="tx-meta">ID ' + Number(user.telegram_id) + ' · So‘nggi faollik ' +
-        formatDate(user.last_active_at) + ' · ' + (user.is_pro ? "PRO" : "FREE") + '</div></div>';
+      var tid = Number(user.telegram_id);
+      return '<div class="admin-list-item" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center" onclick="selectAdminUser(' + tid + ')"><div><b>' + escape(user.first_name || "Foydalanuvchi") +
+        '</b><div class="tx-meta">ID <b>' + tid + '</b> · ' + (user.username ? '@' + escape(user.username) + ' · ' : '') + 'So‘nggi faollik ' +
+        formatDate(user.last_active_at) + ' · <span style="font-weight:600;' + (user.is_pro ? 'color:var(--accent,#8b5cf6)' : 'color:var(--muted,#94a3b8)') + '">' + (user.is_pro ? "PRO" : "FREE") + '</span></div></div><button class="pill" type="button" style="padding:4px 8px;font-size:12px">Tanlash ➔</button></div>';
     }).join("") : '<div class="admin-list-item">Foydalanuvchilar hali yo‘q</div>';
 
     $("admin-payments").innerHTML = payments.length ? payments.map(function(item) {

@@ -1730,6 +1730,15 @@ async function grantUserPro(telegramId, months, source = 'admin_manual', note = 
     }).eq('telegram_id', telegramId);
   }
 
+  try {
+    await supabase.from('subscriptions').insert({
+      telegram_id: telegramId,
+      plan: months === 12 ? '12-month' : (months === 3 ? '3-month' : '1-month'),
+      status: 'active',
+      expires_at: expiresAt
+    });
+  } catch (_) {}
+
   return expiresAt;
 }
 
