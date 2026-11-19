@@ -1266,25 +1266,22 @@ app.post('/api/payments/payme', requireDatabase, async (req, res) => {
 
 app.get('/api/admin/pro-users', requireDatabase, requireTelegram, requireAdmin, async (req, res) => {
   try {
-    const { data: subscriptions, error } = await supabase
-      .from('subscriptions')
-      .select('user_telegram_id, status, starts_at, expires_at, source, note')
-      .eq('status', 'active')
-      .gt('expires_at', new Date().toISOString())
-      .order('expires_at');
-    if (error) throw error;
-    if (!subscriptions.length) return res.json([]);
-    const telegramIds = subscriptions.map(subscription => subscription.user_telegram_id);
     const { data: users, error: usersError } = await supabase
       .from('users')
-      .select('telegram_id, first_name, username')
-      .in('telegram_id', telegramIds);
+      .select('telegram_id, first_name, username, is_pro, pro_status, pro_until, pro_expires_at')
+      .eq('is_pro', true);
     if (usersError) throw usersError;
-    const byId = new Map(users.map(user => [String(user.telegram_id), user]));
-    return res.json(subscriptions.map(subscription => ({
-      ...subscription,
-      user: byId.get(String(subscription.user_telegram_id)) || null
-    })));
+
+    const list = (users || []).map(u => ({
+      user_telegram_id: u.telegram_id,
+      expires_at: u.pro_expires_at || u.pro_until || null,
+      status: 'active',
+      user: {
+        first_name: u.first_name,
+        username: u.username
+      }
+    }));
+    return res.json(list);
   } catch (error) {
     console.error('PRO foydalanuvchilarini olish xatosi:', error.message);
     return sendError(res, 503, 'PRO foydalanuvchilarini yuklab bo‘lmadi.');
@@ -1292,38 +1289,46 @@ app.get('/api/admin/pro-users', requireDatabase, requireTelegram, requireAdmin, 
 });
 
 app.get('/api/admin/payments', requireDatabase, requireTelegram, requireAdmin, async (req, res) => {
-  const { data, error } = await supabase.from('payments')
-    .select('id, user_telegram_id, plan_id, provider, amount_uzs, duration_months, status, provider_transaction_id, provider_data, created_at, paid_at')
-    .order('created_at', { ascending: false }).limit(500);
-  if (error) return sendError(res, 503, 'To‘lovlar tarixini yuklab bo‘lmadi.');
-  const payments = await Promise.all(data.map(async payment => {
-    const receiptPath = payment.provider_data && payment.provider_data.receipt_path;
-    let receiptUrl = null;
-    if (receiptPath) {
-      const { data: signed, error: signedError } = await supabase.storage
-        .from('manual-payment-receipts').createSignedUrl(receiptPath, 600);
-      if (signedError) {
-        console.error('Chek uchun vaqtinchalik URL yaratish xatosi:', signedError.message);
-      } else {
-        receiptUrl = signed.signedUrl;
-      }
+  try {
+    const { data, error } = await supabase.from('payments')
+      .select('*')
+      .order('created_at', { ascending: false }).limit(500);
+    if (error) {
+      console.error('To‘lovlar tarixini yuklab olish xatosi:', error.message);
+      return sendError(res, 503, 'To‘lovlar tarixini yuklab bo‘lmadi.');
     }
-    return {
-      id: payment.id,
-      user_telegram_id: payment.user_telegram_id,
-      plan_id: payment.plan_id,
-      provider: payment.provider,
-      amount_uzs: payment.amount_uzs,
-      duration_months: payment.duration_months,
-      status: payment.status,
-      provider_transaction_id: payment.provider_transaction_id,
-      receipt_reference: payment.provider_data && payment.provider_data.receipt_reference || null,
-      receiptUrl,
-      created_at: payment.created_at,
-      paid_at: payment.paid_at
-    };
-  }));
-  return res.json(payments);
+    const payments = await Promise.all((data || []).map(async payment => {
+      const receiptPath = payment.provider_data && payment.provider_data.receipt_path;
+      let receiptUrl = payment.receipt_url || null;
+      if (receiptPath) {
+        try {
+          const { data: signed, error: signedError } = await supabase.storage
+            .from('manual-payment-receipts').createSignedUrl(receiptPath, 600);
+          if (!signedError && signed) {
+            receiptUrl = signed.signedUrl;
+          }
+        } catch (_) {}
+      }
+      return {
+        id: payment.id,
+        user_telegram_id: payment.user_telegram_id || payment.telegram_id,
+        plan_id: payment.plan_id || payment.plan,
+        provider: payment.provider || 'manual',
+        amount_uzs: payment.amount_uzs || payment.amount,
+        duration_months: payment.duration_months || 1,
+        status: payment.status,
+        provider_transaction_id: payment.provider_transaction_id || null,
+        receipt_reference: payment.provider_data && payment.provider_data.receipt_reference || null,
+        receiptUrl,
+        created_at: payment.created_at,
+        paid_at: payment.paid_at
+      };
+    }));
+    return res.json(payments);
+  } catch (error) {
+    console.error('To‘lovlar admin xatosi:', error.message);
+    return sendError(res, 503, 'To‘lovlar tarixini yuklab bo‘lmadi.');
+  }
 });
 
 app.post('/api/admin/payments/:id/approve', requireDatabase, requireTelegram, requireAdmin, async (req, res) => {

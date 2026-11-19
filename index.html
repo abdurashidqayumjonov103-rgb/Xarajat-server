@@ -2130,15 +2130,21 @@ async function loadAdminPanel() {
   }
   if (!currentUser || !currentUser.isAdmin) return toast("Administrator ruxsati talab qilinadi.", "error");
   try {
+    var fetchSafe = function(url, fallback) {
+      return apiRequest(url).catch(function(e) {
+        console.warn(url + " yuklanmadi:", e);
+        return fallback;
+      });
+    };
     var results = await Promise.all([
-      apiRequest("/api/admin/stats"),
-      apiRequest("/api/admin/pro-users"),
-      apiRequest("/api/admin/payments"),
-      apiRequest("/api/plans"),
-      apiRequest("/api/admin/payment-details"),
-      apiRequest("/api/admin/ai-settings"),
-      apiRequest("/api/admin/system-settings"),
-      apiRequest("/api/admin/categories")
+      fetchSafe("/api/admin/stats", { userCount: 0, activeUserCount: 0, proCount: 0, reviewPayments: 0, pendingPayments: 0, rejectedPayments: 0, approvedPayments: 0, totalRevenueUzs: 0, users: [] }),
+      fetchSafe("/api/admin/pro-users", []),
+      fetchSafe("/api/admin/payments", []),
+      fetchSafe("/api/plans", []),
+      fetchSafe("/api/admin/payment-details", {}),
+      fetchSafe("/api/admin/ai-settings", { enabled: false, systemPrompt: "", providerConfigured: false }),
+      fetchSafe("/api/admin/system-settings", { notificationsEnabled: true, supportUrl: "", supportMessage: "" }),
+      fetchSafe("/api/admin/categories", { expense: KAT_EXPENSE, income: KAT_INCOME })
     ]);
     var stats = results[0], users = results[1], payments = results[2], plans = results[3],
       details = results[4], aiSettings = results[5], systemSettings = results[6], categories = results[7];
