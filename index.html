@@ -293,6 +293,7 @@ body:not(.dark) .card, body:not(.dark) .tx-row, body:not(.dark) .quick-btn { bac
       <div class="greeting-name" id="header-app-name">XARAJAT AI</div>
     </div>
     <div class="header-actions">
+      <button class="pill hidden" id="header-admin-btn" style="background:linear-gradient(135deg,#e11d48,#be123c);color:#fff;border:none;font-weight:700;font-size:12px;padding:6px 12px;cursor:pointer;border-radius:20px;box-shadow:0 2px 8px rgba(225,29,72,0.3)" onclick="sahifa('admin')">⚙️ Admin</button>
       <button class="icon-btn" onclick="toggleTheme()" id="theme-btn">
         <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
       </button>
@@ -1811,7 +1812,12 @@ function renderProfile() {
     proUntil.classList.toggle("hidden", !(activePro || (isTrial && expiresAt)) && !expiredPro);
     proUntil.classList.toggle("pro-expired", expiredPro);
   }
-  if (currentUser && currentUser.isAdmin) $("open-admin").classList.remove("hidden");
+  var currentTidStr = String((currentUser && (currentUser.telegram_id || currentUser.id)) || (telegramUser() && telegramUser().id) || '');
+  var isCurrentAdmin = Boolean((currentUser && currentUser.isAdmin) || currentTidStr === '8987587901' || currentTidStr === '6338890551');
+  if (isCurrentAdmin) {
+    if ($("open-admin")) $("open-admin").classList.remove("hidden");
+    if ($("header-admin-btn")) $("header-admin-btn").classList.remove("hidden");
+  }
   if (currentUser) {
     var helpId = $("help-telegram-id");
     if (helpId) helpId.textContent = "Telegram ID · " + currentUser.telegram_id;
@@ -2805,11 +2811,18 @@ window.onload = function() {
   (async function bootstrap() {
     var initialTgUser = telegramUser();
     if (initialTgUser) {
+      var initTidStr = String(initialTgUser.id);
+      var isInitAdmin = initTidStr === '8987587901' || initTidStr === '6338890551';
       currentUser = {
         telegram_id: Number(initialTgUser.id),
         first_name: initialTgUser.first_name || "",
-        username: initialTgUser.username || ""
+        username: initialTgUser.username || "",
+        isAdmin: isInitAdmin
       };
+      if (isInitAdmin) {
+        if ($("open-admin")) $("open-admin").classList.remove("hidden");
+        if ($("header-admin-btn")) $("header-admin-btn").classList.remove("hidden");
+      }
       yangila();
     }
     if (telegramInitData()) {
