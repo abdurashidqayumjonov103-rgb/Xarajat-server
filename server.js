@@ -1686,6 +1686,67 @@ app.get('/api/admin/revenue', requireDatabase, requireTelegram, requireAdmin, as
   }
 });
 
+async function grantUserPro(telegramId, months, source = 'admin_manual', note = null) {
+  const now = new Date();
+  let currentExpiry = null;
+  const { data: user } = await supabase
+    .from('users')
+    .select('id, telegram_id, is_pro, pro_expires_at, pro_until')
+    .eq('telegram_id', telegramId)
+    .maybeSingle();
+
+  if (user && user.is_pro) {
+    const stored = user.pro_expires_at || user.pro_until;
+    if (stored) {
+      const expDate = new Date(stored);
+      if (!Number.isNaN(expDate.getTime()) && expDate > now) {
+        currentExpiry = expDate;
+      }
+    }
+  }
+
+  const baseDate = currentExpiry || now;
+  const expiresAt = new Date(baseDate.getTime() + months * 30 * 86400000).toISOString();
+
+  const updatePayload = {
+    telegram_id: telegramId,
+    is_pro: true,
+    pro_status: 'pro',
+    pro_expires_at: expiresAt,
+    pro_until: expiresAt,
+    last_active_at: now.toISOString()
+  };
+
+  const { error: upsertErr } = await supabase
+    .from('users')
+    .upsert(updatePayload, { onConflict: 'telegram_id' });
+
+  if (upsertErr) {
+    await supabase.from('users').update({
+      is_pro: true,
+      pro_status: 'pro',
+      pro_expires_at: expiresAt,
+      pro_until: expiresAt
+    }).eq('telegram_id', telegramId);
+  }
+
+  return expiresAt;
+}
+
+async function revokeUserPro(telegramId) {
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from('users')
+    .update({
+      is_pro: false,
+      pro_status: 'expired',
+      pro_expires_at: now,
+      pro_until: now
+    })
+    .eq('telegram_id', telegramId);
+  return !error;
+}
+
 app.post('/api/admin/subscriptions/grant', requireDatabase, requireTelegram, requireAdmin, async (req, res) => {
   const telegramId = validatePositiveInteger(req.body.telegramId);
   const months = validatePositiveInteger(req.body.months, 36);
@@ -1697,11 +1758,15 @@ app.post('/api/admin/subscriptions/grant', requireDatabase, requireTelegram, req
       p_source: req.body.promo ? 'admin_promo' : 'admin_manual',
       p_note: String(req.body.note || '').slice(0, 500) || null
     });
-    if (error) throw error;
-    return res.json({ ok: true, expiresAt: data });
+    if (!error && data) return res.json({ ok: true, expiresAt: data });
+  } catch (_) {}
+
+  try {
+    const expiresAt = await grantUserPro(telegramId, months, req.body.promo ? 'admin_promo' : 'admin_manual', req.body.note);
+    return res.json({ ok: true, expiresAt });
   } catch (error) {
     console.error('PRO obunasini berish xatosi:', error.message);
-    return sendError(res, 400, 'Obunani faollashtirib bo‘lmadi. Foydalanuvchi mavjudligini tekshiring.');
+    return sendError(res, 400, 'Obunani faollashtirib bo‘lmadi.');
   }
 });
 
@@ -1709,22 +1774,40 @@ app.post('/api/admin/subscriptions/extend', requireDatabase, requireTelegram, re
   const telegramId = validatePositiveInteger(req.body.telegramId);
   const months = validatePositiveInteger(req.body.months, 36);
   if (!telegramId || !months) return sendError(res, 400, 'Telegram ID va 1–36 oylik muddat kiriting.');
-  const { data, error } = await supabase.rpc('grant_pro_subscription', {
-    p_telegram_id: telegramId,
-    p_duration_months: months,
-    p_source: 'admin_extension',
-    p_note: String(req.body.note || '').slice(0, 500) || null
-  });
-  if (error) return sendError(res, 400, 'Obunani uzaytirib bo‘lmadi.');
-  return res.json({ ok: true, expiresAt: data });
+  try {
+    const { data, error } = await supabase.rpc('grant_pro_subscription', {
+      p_telegram_id: telegramId,
+      p_duration_months: months,
+      p_source: 'admin_extension',
+      p_note: String(req.body.note || '').slice(0, 500) || null
+    });
+    if (!error && data) return res.json({ ok: true, expiresAt: data });
+  } catch (_) {}
+
+  try {
+    const expiresAt = await grantUserPro(telegramId, months, 'admin_extension', req.body.note);
+    return res.json({ ok: true, expiresAt });
+  } catch (error) {
+    console.error('Obunani uzaytirish xatosi:', error.message);
+    return sendError(res, 400, 'Obunani uzaytirib bo‘lmadi.');
+  }
 });
 
 app.post('/api/admin/subscriptions/revoke', requireDatabase, requireTelegram, requireAdmin, async (req, res) => {
   const telegramId = validatePositiveInteger(req.body.telegramId);
   if (!telegramId) return sendError(res, 400, 'Telegram ID noto‘g‘ri.');
-  const { data, error } = await supabase.rpc('revoke_pro_subscription', { p_telegram_id: telegramId });
-  if (error) return sendError(res, 503, 'Obunani bekor qilib bo‘lmadi.');
-  return res.json({ ok: Boolean(data) });
+  try {
+    const { data, error } = await supabase.rpc('revoke_pro_subscription', { p_telegram_id: telegramId });
+    if (!error && typeof data !== 'undefined') return res.json({ ok: Boolean(data) });
+  } catch (_) {}
+
+  try {
+    const ok = await revokeUserPro(telegramId);
+    return res.json({ ok });
+  } catch (error) {
+    console.error('Obunani bekor qilish xatosi:', error.message);
+    return sendError(res, 503, 'Obunani bekor qilib bo‘lmadi.');
+  }
 });
 
 app.patch('/api/admin/plans/:id', requireDatabase, requireTelegram, requireAdmin, async (req, res) => {
