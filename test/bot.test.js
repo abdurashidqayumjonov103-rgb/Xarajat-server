@@ -11,7 +11,11 @@ const {
   grantSubscriptionDirectly,
   handleCallbackQuery,
   handlePaymentReceipt,
-  handleStart
+  handleStart,
+  handleLanguageCommand,
+  getUserLanguage,
+  setUserLanguage,
+  TRANSLATIONS
 } = require('../bot');
 if (originalAdminId === undefined) delete process.env.ADMIN_ID;
 else process.env.ADMIN_ID = originalAdminId;
@@ -484,6 +488,70 @@ test('admin reject callback closes the payment and notifies the user', async () 
       'http://backend.test/api/admin/payments/123e4567-e89b-42d3-a456-426614174000/reject'
     );
     assert.ok(requests.some(request => request.chat_id === 12345 && /rad etildi/.test(request.text)));
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test('handleLanguageCommand sends 3 language choices (O‘zbekcha, Русский, English)', async () => {
+  const originalFetch = global.fetch;
+  let sentPayload = null;
+  global.fetch = async (url, options = {}) => {
+    sentPayload = JSON.parse(options.body);
+    return jsonResponse({ ok: true, result: {} });
+  };
+
+  try {
+    await handleLanguageCommand({ chat: { id: 77777 } });
+    assert.ok(sentPayload);
+    assert.equal(sentPayload.chat_id, 77777);
+    const buttons = sentPayload.reply_markup.inline_keyboard.flat();
+    assert.equal(buttons.length, 3);
+    assert.ok(buttons.some(b => b.callback_data === 'setlang_uz'));
+    assert.ok(buttons.some(b => b.callback_data === 'setlang_ru'));
+    assert.ok(buttons.some(b => b.callback_data === 'setlang_en'));
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test('setlang callback changes language and start displays chosen language', async () => {
+  const originalFetch = global.fetch;
+  const sentMessages = [];
+  global.fetch = async (url, options = {}) => {
+    if (url.startsWith('http://backend.test/api/auth')) {
+      return jsonResponse({ isPro: false }, 200);
+    }
+    const body = JSON.parse(options.body);
+    sentMessages.push(body);
+    return jsonResponse({ ok: true, result: {} });
+  };
+
+  try {
+    // Switch to Russian
+    await handleCallbackQuery({
+      id: 'cb-ru',
+      from: { id: 88888, first_name: 'Ivan' },
+      data: 'setlang_ru',
+      message: { chat: { id: 88888 } }
+    });
+    const langRu = await getUserLanguage(88888);
+    assert.equal(langRu, 'ru');
+    assert.ok(sentMessages.some(m => /Язык успешно изменён/i.test(m.text)));
+    assert.ok(sentMessages.some(m => /добро пожаловать/i.test(m.text)));
+
+    // Switch to English
+    sentMessages.length = 0;
+    await handleCallbackQuery({
+      id: 'cb-en',
+      from: { id: 88888, first_name: 'John' },
+      data: 'setlang_en',
+      message: { chat: { id: 88888 } }
+    });
+    const langEn = await getUserLanguage(88888);
+    assert.equal(langEn, 'en');
+    assert.ok(sentMessages.some(m => /Language successfully changed/i.test(m.text)));
+    assert.ok(sentMessages.some(m => /welcome to your smart personal finance assistant/i.test(m.text)));
   } finally {
     global.fetch = originalFetch;
   }

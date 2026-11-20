@@ -35,6 +35,185 @@ function friendlyBotError(error) {
   return message;
 }
 
+const TRANSLATIONS = {
+  uz: {
+    langName: "🇺🇿 O‘zbekcha",
+    selectLang: "🌐 <b>Tilni tanlang / Выберите язык / Choose language:</b>\n\nIltimos, o‘zingizga qulay tilni tanlang:",
+    langChanged: "✅ Til <b>O‘zbekcha</b>ga o‘zgartirildi!",
+    welcome: (name, subText) => [
+      'Assalomu alaykum, <b>' + escapeHtml(name) + '</b>! 👋',
+      '',
+      '💸 <b>Xarajat AI</b> — shaxsiy moliyaviy aqlli yordamchingizga xush kelibsiz!',
+      '',
+      'Bu yerda siz:',
+      '🔹 Daromad va xarajatlaringizni oson hisoblab borasiz',
+      '🔹 Xarid cheklarini rasmga olib, avtomatik skanerlaysiz',
+      '🔹 AI orqali byudjet tahlili va tejash maslahatlarini olasiz',
+      '',
+      subText,
+      '',
+      'Xarajatlaringizni kiritish va tahlil qilish uchun pastdagi tugmani bosing:'
+    ].join('\n'),
+    subFree: '🆓 <b>Obunangiz:</b> FREE tarif (PRO imkoniyatlarini ilovada ochishingiz mumkin).',
+    subTrial: (days) => '🎁 <b>Obunangiz:</b> 7 kunlik bepul PRO sinov tarifi faol! Qolgan kunlar: <b>' + days + '</b>.',
+    subPro: '👑 <b>Obunangiz:</b> PRO tarif faol (barcha imkoniyatlar ochiq).',
+    openApp: '🚀 Ilovani ochish',
+    changeLang: '🌐 Tilni o‘zgartirish',
+    receiptReceived: '✅ Chekingiz qabul qilindi va administratorga yuborildi. Tasdiqlanishi bilan obunangiz faollashadi.',
+    askPlan: '❓ Iltimos, to‘lov qaysi PRO tarifi uchun amalga oshirilganini pastdagi tugmalardan tanlang:',
+    planSent: (months) => '✅ Rahmat! ' + months + ' oylik PRO tarifi arizangiz administratorga yuborildi. Tasdiqlanishi bilan obunangiz faollashadi.',
+    proApproved: (date) => '🎉 PRO obunangiz faollashtirildi! Amal qilish muddati: ' + date + ' gacha',
+    proRejected: '⚠️ To‘lov chekingiz administrator tomonidan rad etildi. Qo‘shimcha ma’lumot uchun administratorga murojaat qiling.',
+    help: [
+      'ℹ️ <b>Xarajat AI boti:</b>',
+      '',
+      '🔹 /start — Botni ishga tushirish va asosiy menyu',
+      '🔹 /lang yoki /til — Tilni tanlash (O‘zbekcha, Русский, English)',
+      '🔹 To‘lov chekining rasmini yuborish orqali PRO obunaga ariza topshirishingiz mumkin.'
+    ].join('\n'),
+    plans: {
+      '1-month': '1 Oylik PRO (14 990)',
+      '3-month': '3 Oylik PRO (44 990)',
+      '6-month': '6 Oylik PRO (89 990)',
+      '12-month': '1 Yillik PRO (179 990)'
+    }
+  },
+  ru: {
+    langName: "🇷🇺 Русский",
+    selectLang: "🌐 <b>Выберите язык / Tilni tanlang / Choose language:</b>\n\nПожалуйста, выберите удобный для вас язык:",
+    langChanged: "✅ Язык успешно изменён на <b>Русский</b>!",
+    welcome: (name, subText) => [
+      'Здравствуйте, <b>' + escapeHtml(name) + '</b>! 👋',
+      '',
+      '💸 <b>Xarajat AI</b> — добро пожаловать в ваш умный финансовый помощник!',
+      '',
+      'Здесь вы можете:',
+      '🔹 Легко вести учет доходов и расходов',
+      '🔹 Сканировать чеки покупок прямо по фото',
+      '🔹 Получать умный анализ бюджета и советы по экономии с помощью ИИ',
+      '',
+      subText,
+      '',
+      'Нажмите кнопку ниже, чтобы открыть приложение:'
+    ].join('\n'),
+    subFree: '🆓 <b>Ваша подписка:</b> Тариф FREE (возможности PRO доступны в приложении).',
+    subTrial: (days) => '🎁 <b>Ваша подписка:</b> Активен 7-дневный бесплатный пробный PRO! Осталось дней: <b>' + days + '</b>.',
+    subPro: '👑 <b>Ваша подписка:</b> Тариф PRO активен (все функции разблокированы).',
+    openApp: '🚀 Открыть приложение',
+    changeLang: '🌐 Сменить язык',
+    receiptReceived: '✅ Ваш чек принят и отправлен администратору. Подписка активируется после подтверждения.',
+    askPlan: '❓ Пожалуйста, выберите тариф PRO, за который была произведена оплата:',
+    planSent: (months) => '✅ Спасибо! Ваша заявка на тариф PRO на ' + months + ' мес. отправлена администратору. Подписка активируется после подтверждения.',
+    proApproved: (date) => '🎉 Ваша подписка PRO активирована! Срок действия: до ' + date,
+    proRejected: '⚠️ Ваш чек об оплате был отклонён администратором. Для дополнительной информации обратитесь к администратору.',
+    help: [
+      'ℹ️ <b>Бот Xarajat AI:</b>',
+      '',
+      '🔹 /start — Запустить бота и открыть главное меню',
+      '🔹 /lang — Выбрать язык (O‘zbekcha, Русский, English)',
+      '🔹 Вы можете отправить фото чека оплаты для заявки на подписку PRO.'
+    ].join('\n'),
+    plans: {
+      '1-month': '1 месяц PRO (14 990)',
+      '3-month': '3 месяца PRO (44 990)',
+      '6-month': '6 месяцев PRO (89 990)',
+      '12-month': '1 год PRO (179 990)'
+    }
+  },
+  en: {
+    langName: "🇬🇧 English",
+    selectLang: "🌐 <b>Choose language / Tilni tanlang / Выберите язык:</b>\n\nPlease select your preferred language:",
+    langChanged: "✅ Language successfully changed to <b>English</b>!",
+    welcome: (name, subText) => [
+      'Hello, <b>' + escapeHtml(name) + '</b>! 👋',
+      '',
+      '💸 <b>Xarajat AI</b> — welcome to your smart personal finance assistant!',
+      '',
+      'Here you can:',
+      '🔹 Easily track your income and expenses',
+      '🔹 Scan receipts automatically from photos',
+      '🔹 Get AI-powered budget insights and smart savings advice',
+      '',
+      subText,
+      '',
+      'Click the button below to open the app:'
+    ].join('\n'),
+    subFree: '🆓 <b>Your subscription:</b> FREE plan (unlock PRO features in the app).',
+    subTrial: (days) => '🎁 <b>Your subscription:</b> 7-day free PRO trial is active! Days left: <b>' + days + '</b>.',
+    subPro: '👑 <b>Your subscription:</b> PRO plan is active (all features unlocked).',
+    openApp: '🚀 Open App',
+    changeLang: '🌐 Change language',
+    receiptReceived: '✅ Your receipt has been received and sent to administrator. Your subscription will be activated upon approval.',
+    askPlan: '❓ Please select the PRO plan you paid for using the buttons below:',
+    planSent: (months) => '✅ Thank you! Your request for ' + months + ' months PRO has been sent to administrator. Your subscription will be activated upon approval.',
+    proApproved: (date) => '🎉 Your PRO subscription has been activated! Valid until: ' + date,
+    proRejected: '⚠️ Your payment receipt was rejected by administrator. Please contact administrator for more information.',
+    help: [
+      'ℹ️ <b>Xarajat AI bot:</b>',
+      '',
+      '🔹 /start — Start the bot and open main menu',
+      '🔹 /lang — Change language (O‘zbekcha, Русский, English)',
+      '🔹 You can send a payment receipt photo to apply for a PRO subscription.'
+    ].join('\n'),
+    plans: {
+      '1-month': '1 Month PRO (14,990)',
+      '3-month': '3 Months PRO (44,990)',
+      '6-month': '6 Months PRO (89,990)',
+      '12-month': '1 Year PRO (179,990)'
+    }
+  }
+};
+
+const userLanguages = new Map();
+
+async function getUserLanguage(userId, database = supabase) {
+  if (!userId) return 'uz';
+  const idStr = String(userId);
+  if (userLanguages.has(idStr)) return userLanguages.get(idStr);
+
+  if (database) {
+    try {
+      const { data } = await database.from('app_settings')
+        .select('value')
+        .eq('key', 'user_lang:' + idStr)
+        .maybeSingle();
+      if (data && data.value && TRANSLATIONS[data.value]) {
+        userLanguages.set(idStr, data.value);
+        return data.value;
+      }
+    } catch (_) {}
+  }
+  return 'uz';
+}
+
+async function setUserLanguage(userId, lang, database = supabase) {
+  if (!userId || !TRANSLATIONS[lang]) return;
+  const idStr = String(userId);
+  userLanguages.set(idStr, lang);
+
+  if (database) {
+    try {
+      await database.from('app_settings').upsert({
+        key: 'user_lang:' + idStr,
+        value: lang,
+        updated_at: new Date().toISOString()
+      });
+    } catch (_) {}
+  }
+}
+
+function getLanguageKeyboard() {
+  return [
+    [
+      { text: '🇺🇿 O‘zbekcha', callback_data: 'setlang_uz' },
+      { text: '🇷🇺 Русский', callback_data: 'setlang_ru' }
+    ],
+    [
+      { text: '🇬🇧 English', callback_data: 'setlang_en' }
+    ]
+  ];
+}
+
 async function telegram(method, payload) {
   const response = await fetch('https://api.telegram.org/bot' + TOKEN + '/' + method, {
     method: 'POST',
@@ -258,24 +437,27 @@ async function handlePaymentReceipt(message) {
     console.error('Chekni Telegram orqali administratorga yuborib bo‘lmadi:', error.message);
   }
 
+  const lang = await getUserLanguage(chatId);
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
+
   try {
     await telegram('sendMessage', {
       chat_id: chatId,
-      text: '✅ Chekingiz qabul qilindi va administratorga yuborildi. Tasdiqlanishi bilan obunangiz faollashadi.'
+      text: t.receiptReceived
     });
     if (!payment) {
       await telegram('sendMessage', {
         chat_id: chatId,
-        text: '❓ Iltimos, to‘lov qaysi PRO tarifi uchun amalga oshirilganini pastdagi tugmalardan tanlang:',
+        text: t.askPlan,
         reply_markup: {
           inline_keyboard: [
             [
-              { text: '1 Oylik PRO (14 990)', callback_data: 'userplan_' + chatId + '_1-month_' + photo.file_id },
-              { text: '3 Oylik PRO (44 990)', callback_data: 'userplan_' + chatId + '_3-month_' + photo.file_id }
+              { text: t.plans['1-month'], callback_data: 'userplan_' + chatId + '_1-month_' + photo.file_id },
+              { text: t.plans['3-month'], callback_data: 'userplan_' + chatId + '_3-month_' + photo.file_id }
             ],
             [
-              { text: '6 Oylik PRO (89 990)', callback_data: 'userplan_' + chatId + '_6-month_' + photo.file_id },
-              { text: '1 Yillik PRO (179 990)', callback_data: 'userplan_' + chatId + '_12-month_' + photo.file_id }
+              { text: t.plans['6-month'], callback_data: 'userplan_' + chatId + '_6-month_' + photo.file_id },
+              { text: t.plans['12-month'], callback_data: 'userplan_' + chatId + '_12-month_' + photo.file_id }
             ]
           ]
         }
@@ -298,10 +480,12 @@ function isAdmin(telegramId) {
     callbackAdminId === String(process.env.TEST_ADMIN_ID).trim();
 }
 
-async function handleStart(message) {
+async function handleStart(message, database = supabase) {
   const chatId = message.chat.id;
   const firstName = message.from.first_name || 'Foydalanuvchi';
-  let subscriptionText = '🆓 <b>Obunangiz:</b> FREE tarif (PRO imkoniyatlarini ilovada ochishingiz mumkin).';
+  const lang = await getUserLanguage(chatId, database);
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
+  let subscriptionText = t.subFree;
 
   try {
     const user = await backend('/api/auth', chatId, {
@@ -315,12 +499,12 @@ async function handleStart(message) {
     });
     if (user.isPro) {
       if (user.isTrialActive || user.pro_status === 'trial') {
-        subscriptionText = '🎁 <b>Obunangiz:</b> 7 kunlik bepul PRO sinov tarifi faol! Qolgan kunlar: <b>' + (user.daysLeft || 7) + '</b>.';
+        subscriptionText = t.subTrial(user.daysLeft || 7);
       } else {
-        subscriptionText = '👑 <b>Obunangiz:</b> PRO tarif faol (barcha imkoniyatlar ochiq).';
+        subscriptionText = t.subPro;
       }
     } else {
-      subscriptionText = '🆓 <b>Obunangiz:</b> FREE tarif (PRO imkoniyatlarini ilovada ochishingiz mumkin).';
+      subscriptionText = t.subFree;
     }
   } catch (error) {
     console.error('Auth xatosi:', error.message);
@@ -328,28 +512,42 @@ async function handleStart(message) {
 
   const buttons = [];
   if (WEBAPP_URL) {
-    buttons.push([{ text: '🚀 Ilovani ochish', web_app: { url: WEBAPP_URL } }]);
+    buttons.push([{ text: t.openApp, web_app: { url: WEBAPP_URL } }]);
   }
-  const welcomeText = [
-    'Assalomu alaykum, <b>' + escapeHtml(firstName) + '</b>! 👋',
-    '',
-    '💸 <b>Xarajat AI</b> — shaxsiy moliyaviy aqlli yordamchingizga xush kelibsiz!',
-    '',
-    'Bu yerda siz:',
-    '🔹 Daromad va xarajatlaringizni oson hisoblab borasiz',
-    '🔹 Xarid cheklarini rasmga olib, avtomatik skanerlaysiz',
-    '🔹 AI orqali byudjet tahlili va tejash maslahatlarini olasiz',
-    '',
-    subscriptionText,
-    '',
-    'Xarajatlaringizni kiritish va tahlil qilish uchun pastdagi tugmani bosing:'
-  ].join('\n');
+  buttons.push([{ text: t.changeLang, callback_data: 'setlang_prompt' }]);
+
+  const welcomeText = t.welcome(firstName, subscriptionText);
 
   await telegram('sendMessage', {
     chat_id: chatId,
     text: welcomeText,
     parse_mode: 'HTML',
     reply_markup: { inline_keyboard: buttons }
+  });
+}
+
+async function handleLanguageCommand(message, database = supabase) {
+  const chatId = message.chat.id;
+  const lang = await getUserLanguage(chatId, database);
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
+  await telegram('sendMessage', {
+    chat_id: chatId,
+    text: t.selectLang,
+    parse_mode: 'HTML',
+    reply_markup: {
+      inline_keyboard: getLanguageKeyboard()
+    }
+  });
+}
+
+async function handleHelpCommand(message, database = supabase) {
+  const chatId = message.chat.id;
+  const lang = await getUserLanguage(chatId, database);
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
+  await telegram('sendMessage', {
+    chat_id: chatId,
+    text: t.help,
+    parse_mode: 'HTML'
   });
 }
 
@@ -537,12 +735,15 @@ async function handleUserPlanSelection(query, database = supabase) {
     console.error('userplan sendReceiptToAdmins error:', e.message);
   }
 
+  const userLang = await getUserLanguage(userId, database);
+  const userT = TRANSLATIONS[userLang] || TRANSLATIONS.uz;
+
   const message = query.message;
   if (message && message.chat && message.message_id) {
     await telegram('editMessageText', {
       chat_id: message.chat.id,
       message_id: message.message_id,
-      text: '✅ Rahmat! ' + months + ' oylik PRO tarifi arizangiz administratorga yuborildi. Tasdiqlanishi bilan obunangiz faollashadi.'
+      text: userT.planSent(months)
     }).catch(() => {});
   }
 }
@@ -563,6 +764,40 @@ async function handleCallbackQuery(query, database = supabase) {
 
   if (data.startsWith('userplan_')) {
     await handleUserPlanSelection(query, database);
+    return;
+  }
+
+  if (data === 'setlang_prompt') {
+    const lang = await getUserLanguage(actorId, database);
+    const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
+    await telegram('sendMessage', {
+      chat_id: query.message && query.message.chat ? query.message.chat.id : actorId,
+      text: t.selectLang,
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: getLanguageKeyboard()
+      }
+    });
+    return;
+  }
+
+  if (data.startsWith('setlang_')) {
+    const chosenLang = data.replace('setlang_', '');
+    if (TRANSLATIONS[chosenLang]) {
+      await setUserLanguage(actorId, chosenLang, database);
+      const t = TRANSLATIONS[chosenLang];
+      await telegram('sendMessage', {
+        chat_id: query.message && query.message.chat ? query.message.chat.id : actorId,
+        text: t.langChanged,
+        parse_mode: 'HTML'
+      });
+      if (query.message && query.message.chat) {
+        await handleStart({
+          chat: { id: query.message.chat.id },
+          from: query.from || { id: actorId }
+        }, database);
+      }
+    }
     return;
   }
 
@@ -628,11 +863,12 @@ async function handleCallbackQuery(query, database = supabase) {
         database
       );
       await markManualPaymentApproved(userId, actorId, database, paymentId ? paymentId[1] : null);
+      const userLang = await getUserLanguage(userId, database);
+      const userT = TRANSLATIONS[userLang] || TRANSLATIONS.uz;
       try {
         await telegram('sendMessage', {
           chat_id: userId,
-          text: '🎉 PRO obunangiz faollashtirildi! Amal qilish muddati: ' +
-            formatSubscriptionDate(expiresAt) + ' gacha'
+          text: userT.proApproved(formatSubscriptionDate(expiresAt))
         });
       } catch (notificationError) {
         console.error('Obuna faollashgani haqida xabar yuborilmadi:', notificationError.message);
@@ -648,10 +884,12 @@ async function handleCallbackQuery(query, database = supabase) {
           body: JSON.stringify({ reason: 'Telegram orqali manual chek rad etildi' })
         });
       }
+      const userLang = await getUserLanguage(userId, database);
+      const userT = TRANSLATIONS[userLang] || TRANSLATIONS.uz;
       try {
         await telegram('sendMessage', {
           chat_id: userId,
-          text: '⚠️ To‘lov chekingiz administrator tomonidan rad etildi. Qo‘shimcha ma’lumot uchun administratorga murojaat qiling.'
+          text: userT.proRejected
         });
       } catch (notificationError) {
         console.error('Rad etish haqida xabar yuborilmadi:', notificationError.message);
@@ -696,6 +934,16 @@ async function updateCallbackMessage(query, captionStatus) {
 async function handleAdminCommand(message, database = supabase) {
   const [command, ...args] = String(message.text || '').trim().split(/\s+/);
   const actorId = message.from.id;
+
+  if (command === '/lang' || command === '/language' || command === '/til') {
+    await handleLanguageCommand(message, database);
+    return;
+  }
+  if (command === '/help' || command === '/yordam') {
+    await handleHelpCommand(message, database);
+    return;
+  }
+
   if (!isAdmin(actorId)) {
     await telegram('sendMessage', { chat_id: message.chat.id, text: 'Bu buyruq faqat administrator uchun.' });
     return;
@@ -925,6 +1173,10 @@ async function startBot() {
         if (!update.message.text) continue;
         if (/^\/start(?:@\w+)?(?:\s|$)/.test(update.message.text)) {
           await handleStart(update.message);
+        } else if (/^\/(?:lang|language|til)(?:@\w+)?(?:\s|$)/i.test(update.message.text)) {
+          await handleLanguageCommand(update.message);
+        } else if (/^\/(?:help|yordam)(?:@\w+)?(?:\s|$)/i.test(update.message.text)) {
+          await handleHelpCommand(update.message);
         } else if (update.message.text.startsWith('/')) {
           await handleAdminCommand(update.message);
         }
@@ -944,12 +1196,18 @@ if (require.main === module) {
 }
 
 module.exports = {
+  TRANSLATIONS,
   escapeHtml,
   friendlyBotError,
   grantSubscriptionDirectly,
+  getLanguageKeyboard,
+  getUserLanguage,
+  setUserLanguage,
   handleCallbackQuery,
   handlePaymentReceipt,
   handleStart,
+  handleLanguageCommand,
+  handleHelpCommand,
   handleAdminCommand,
   isAdmin,
   startBot
