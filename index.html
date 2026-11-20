@@ -282,6 +282,45 @@ body:not(.dark) .card, body:not(.dark) .tx-row, body:not(.dark) .quick-btn { bac
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+.modal.hidden { display: none !important; }
+.modal-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 20px;
+  width: 100%;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+.lang-item-btn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 13px 16px;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+.lang-item-btn:hover, .lang-item-btn.active {
+  border-color: var(--primary);
+  background: rgba(99,102,241,0.08);
+}
 </style>
 </head>
 <body class="dark">
@@ -293,6 +332,7 @@ body:not(.dark) .card, body:not(.dark) .tx-row, body:not(.dark) .quick-btn { bac
       <div class="greeting-name" id="header-app-name">XARAJAT AI</div>
     </div>
     <div class="header-actions">
+      <button class="pill" id="header-lang-btn" style="background:var(--card);color:var(--text);border:1px solid var(--border);font-weight:700;font-size:11px;padding:6px 10px;cursor:pointer;border-radius:14px;display:flex;align-items:center;gap:4px" onclick="openLangModal()">🌐 <span id="current-lang-code">UZ</span></button>
       <button class="pill hidden" id="header-admin-btn" style="background:linear-gradient(135deg,#e11d48,#be123c);color:#fff;border:none;font-weight:700;font-size:12px;padding:6px 12px;cursor:pointer;border-radius:20px;box-shadow:0 2px 8px rgba(225,29,72,0.3)" onclick="sahifa('admin')">⚙️ Admin</button>
       <button class="icon-btn" onclick="toggleTheme()" id="theme-btn">
         <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
@@ -319,11 +359,11 @@ body:not(.dark) .card, body:not(.dark) .tx-row, body:not(.dark) .quick-btn { bac
       <div style="display:flex;align-items:center;gap:12px">
         <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#9333ea,#7c3aed);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;box-shadow:0 4px 12px rgba(147,51,234,0.3)">👨‍👩‍👧‍👦</div>
         <div>
-          <div style="font-weight:700;font-size:15px;color:var(--text)">Oilaviy hamyon va musobaqa</div>
-          <div class="tx-meta" style="font-size:12px">Oila a’zolari bilan birgalikda byudjet va tejamkorlik</div>
+          <div id="fam-banner-title" style="font-weight:700;font-size:15px;color:var(--text)">Oilaviy hamyon va musobaqa</div>
+          <div id="fam-banner-desc" class="tx-meta" style="font-size:12px">Oila a’zolari bilan birgalikda byudjet va tejamkorlik</div>
         </div>
       </div>
-      <button class="pill" type="button" style="background:#9333ea;color:#fff;border:none;padding:8px 14px;font-size:12px;font-weight:700;flex-shrink:0;cursor:pointer">Kirish ➔</button>
+      <button class="pill" id="fam-banner-btn" type="button" style="background:#9333ea;color:#fff;border:none;padding:8px 14px;font-size:12px;font-weight:700;flex-shrink:0;cursor:pointer">Kirish ➔</button>
     </div>
     <section class="dashboard-grid" data-account-data>
       <article class="card dashboard-card dashboard-wide">
@@ -470,11 +510,12 @@ body:not(.dark) .card, body:not(.dark) .tx-row, body:not(.dark) .quick-btn { bac
     <div class="card" data-account-data><div class="section-title" style="margin-bottom:8px">Umumiy hisob</div><div id="umumiy-stat"></div></div>
     <div class="card settings-actions">
       <div class="section-title">Ilova</div>
-      <button class="btn btn-ghost" onclick="toggleTheme()">◐ Mavzuni o‘zgartirish</button>
-      <button class="btn btn-ghost" onclick="manageCategories()">▦ Kategoriyalarni boshqarish</button>
-      <button class="btn btn-ghost" onclick="sahifa('family')">👨‍👩‍👧‍👦 Oilaviy hamyon va musobaqa</button>
-      <button class="btn btn-ghost" onclick="sahifa('notifications')">◉ Bildirishnomalar va to‘lovlar</button>
-      <button class="btn btn-ghost" onclick="sahifa('help')">? Yordam va qo‘llab-quvvatlash</button>
+      <button class="btn btn-ghost" id="btn-settings-lang" onclick="openLangModal()">🌐 Til: <b id="settings-lang-name">O‘zbekcha</b></button>
+      <button class="btn btn-ghost" id="btn-settings-theme" onclick="toggleTheme()">◐ Mavzuni o‘zgartirish</button>
+      <button class="btn btn-ghost" id="btn-settings-cat" onclick="manageCategories()">▦ Kategoriyalarni boshqarish</button>
+      <button class="btn btn-ghost" id="btn-settings-fam" onclick="sahifa('family')">👨‍👩‍👧‍👦 Oilaviy hamyon va musobaqa</button>
+      <button class="btn btn-ghost" id="btn-settings-notif" onclick="sahifa('notifications')">◉ Bildirishnomalar va to‘lovlar</button>
+      <button class="btn btn-ghost" id="btn-settings-help" onclick="sahifa('help')">? Yordam va qo‘llab-quvvatlash</button>
       <button class="btn btn-ghost hidden" id="open-admin" onclick="sahifa('admin')">▤ Administrator paneli</button>
     </div>
   </div>
@@ -756,6 +797,29 @@ body:not(.dark) .card, body:not(.dark) .tx-row, body:not(.dark) .quick-btn { bac
   </div>
 </div>
 
+<div id="modal-lang" class="modal hidden" onclick="if(event.target===this)closeLangModal()">
+  <div class="modal-card" style="max-width:360px;margin:auto">
+    <div class="section-header" style="margin-bottom:12px">
+      <div class="section-title">🌐 Tilni tanlang / Язык / Language</div>
+      <button class="section-action" onclick="closeLangModal()">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button class="lang-item-btn" id="lang-btn-uz" onclick="setAppLanguage('uz')">
+        <span>🇺🇿 O‘zbekcha</span>
+        <span class="lang-check" id="lang-check-uz" style="color:var(--primary);font-weight:700">✓</span>
+      </button>
+      <button class="lang-item-btn" id="lang-btn-ru" onclick="setAppLanguage('ru')">
+        <span>🇷🇺 Русский</span>
+        <span class="lang-check" id="lang-check-ru" style="color:var(--primary);font-weight:700;display:none">✓</span>
+      </button>
+      <button class="lang-item-btn" id="lang-btn-en" onclick="setAppLanguage('en')">
+        <span>🇬🇧 English</span>
+        <span class="lang-check" id="lang-check-en" style="color:var(--primary);font-weight:700;display:none">✓</span>
+      </button>
+    </div>
+  </div>
+</div>
+
 <nav class="bottom-nav">
   <div class="nav-list">
     <button class="nav-btn active" data-page="home" onclick="sahifa('home')"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Bosh</button>
@@ -776,6 +840,254 @@ body:not(.dark) .card, body:not(.dark) .tx-row, body:not(.dark) .quick-btn { bac
 // ==========================================
 var currentType = "expense";
 var currentFilter = "all";
+var currentLang = "uz";
+var I18N = {
+  uz: {
+    code: "UZ",
+    name: "O‘zbekcha",
+    navHome: "Bosh",
+    navChek: "Chek",
+    navBudjet: "Budjet",
+    navAi: "AI",
+    navStat: "Stat",
+    navPro: "PRO",
+    navSettings: "Sozlama",
+    greetingMorning: "Xayrli tong",
+    greetingAfternoon: "Xayrli kun",
+    greetingEvening: "Xayrli kech",
+    greetingNight: "Xayrli tun",
+    balanceLabel: "Joriy balans",
+    currency: "so'm",
+    income: "Kirim",
+    expense: "Xarajat",
+    all: "Hammasi",
+    familyBannerTitle: "Oilaviy hamyon va musobaqa",
+    familyBannerDesc: "Oila a’zolari bilan birgalikda byudjet va tejamkorlik",
+    familyBannerBtn: "Kirish ➔",
+    scanner: "Skaner",
+    family: "Oila",
+    newExpense: "Yangi xarajat",
+    newIncome: "Yangi kirim",
+    saveExpense: "Xarajat qo'shish",
+    saveIncome: "Kirim qo'shish",
+    nameLabel: "Nomi",
+    sourceLabel: "Manba",
+    namePlaceholder: "Masalan: Non",
+    nameIncomePlaceholder: "Masalan: Oylik maosh",
+    amountLabel: "Summa",
+    catLabel: "Kategoriya",
+    settingsTitle: "Profil va sozlamalar",
+    settingsOverall: "Umumiy hisob",
+    settingsApp: "Ilova",
+    settingsTheme: "◐ Mavzuni o‘zgartirish",
+    settingsLangPrefix: "🌐 Til: ",
+    settingsCat: "▦ Kategoriyalarni boshqarish",
+    settingsFamily: "👨‍👩‍👧‍👦 Oilaviy hamyon va musobaqa",
+    settingsNotif: "◉ Bildirishnomalar va to‘lovlar",
+    settingsHelp: "? Yordam va qo‘llab-quvvatlash",
+    langChanged: "Til o‘zbek tiliga o‘zgartirildi"
+  },
+  ru: {
+    code: "RU",
+    name: "Русский",
+    navHome: "Главная",
+    navChek: "Чек",
+    navBudjet: "Бюджет",
+    navAi: "ИИ",
+    navStat: "Стат",
+    navPro: "PRO",
+    navSettings: "Настройки",
+    greetingMorning: "Доброе утро",
+    greetingAfternoon: "Добрый день",
+    greetingEvening: "Добрый вечер",
+    greetingNight: "Доброй ночи",
+    balanceLabel: "Текущий баланс",
+    currency: "сум",
+    income: "Доход",
+    expense: "Расход",
+    all: "Все",
+    familyBannerTitle: "Семейный кошелек и турнир",
+    familyBannerDesc: "Совместный бюджет и экономия с членами семьи",
+    familyBannerBtn: "Войти ➔",
+    scanner: "Сканер",
+    family: "Семья",
+    newExpense: "Новый расход",
+    newIncome: "Новый доход",
+    saveExpense: "Добавить расход",
+    saveIncome: "Добавить доход",
+    nameLabel: "Название",
+    sourceLabel: "Источник",
+    namePlaceholder: "Например: Продукты",
+    nameIncomePlaceholder: "Например: Зарплата",
+    amountLabel: "Сумма",
+    catLabel: "Категория",
+    settingsTitle: "Профиль и настройки",
+    settingsOverall: "Общий баланс",
+    settingsApp: "Приложение",
+    settingsTheme: "◐ Сменить тему",
+    settingsLangPrefix: "🌐 Язык: ",
+    settingsCat: "▦ Управление категориями",
+    settingsFamily: "👨‍👩‍👧‍👦 Семейный кошелек и турнир",
+    settingsNotif: "◉ Уведомления и платежи",
+    settingsHelp: "? Помощь и поддержка",
+    langChanged: "Язык успешно изменён на Русский"
+  },
+  en: {
+    code: "EN",
+    name: "English",
+    navHome: "Home",
+    navChek: "Receipt",
+    navBudjet: "Budget",
+    navAi: "AI",
+    navStat: "Stats",
+    navPro: "PRO",
+    navSettings: "Settings",
+    greetingMorning: "Good morning",
+    greetingAfternoon: "Good afternoon",
+    greetingEvening: "Good evening",
+    greetingNight: "Good night",
+    balanceLabel: "Current balance",
+    currency: "UZS",
+    income: "Income",
+    expense: "Expense",
+    all: "All",
+    familyBannerTitle: "Family Wallet & League",
+    familyBannerDesc: "Budget together and compete for best savings",
+    familyBannerBtn: "Enter ➔",
+    scanner: "Scanner",
+    family: "Family",
+    newExpense: "New expense",
+    newIncome: "New income",
+    saveExpense: "Add expense",
+    saveIncome: "Add income",
+    nameLabel: "Name",
+    sourceLabel: "Source",
+    namePlaceholder: "E.g.: Groceries",
+    nameIncomePlaceholder: "E.g.: Salary",
+    amountLabel: "Amount",
+    catLabel: "Category",
+    settingsTitle: "Profile & settings",
+    settingsOverall: "Total summary",
+    settingsApp: "Application",
+    settingsTheme: "◐ Toggle theme",
+    settingsLangPrefix: "🌐 Language: ",
+    settingsCat: "▦ Manage categories",
+    settingsFamily: "👨‍👩‍👧‍👦 Family wallet & league",
+    settingsNotif: "◉ Notifications & payments",
+    settingsHelp: "? Help & support",
+    langChanged: "Language successfully changed to English"
+  }
+};
+
+function applyLanguage(lang) {
+  if (!I18N[lang]) lang = "uz";
+  currentLang = lang;
+  var t = I18N[lang];
+
+  var codeEl = $("current-lang-code");
+  if (codeEl) codeEl.textContent = t.code;
+
+  var setLangEl = $("settings-lang-name");
+  if (setLangEl) setLangEl.textContent = t.name;
+
+  ["uz", "ru", "en"].forEach(function(l) {
+    var check = $("lang-check-" + l);
+    if (check) check.style.display = (l === lang) ? "inline" : "none";
+    var btn = $("lang-btn-" + l);
+    if (btn) btn.classList.toggle("active", l === lang);
+  });
+
+  var navBtns = document.querySelectorAll(".bottom-nav .nav-btn");
+  navBtns.forEach(function(btn) {
+    var page = btn.getAttribute("data-page");
+    var svg = btn.querySelector("svg");
+    var svgHtml = svg ? svg.outerHTML : "";
+    if (page === "home") btn.innerHTML = svgHtml + t.navHome;
+    else if (page === "chek") btn.innerHTML = svgHtml + t.navChek;
+    else if (page === "budjet") btn.innerHTML = svgHtml + t.navBudjet;
+    else if (page === "ai") btn.innerHTML = svgHtml + t.navAi;
+    else if (page === "stats") btn.innerHTML = svgHtml + t.navStat;
+    else if (page === "pro") btn.innerHTML = svgHtml + t.navPro;
+    else if (page === "settings") btn.innerHTML = svgHtml + t.navSettings;
+  });
+
+  var heroLabel = document.querySelector(".hero-label");
+  if (heroLabel) heroLabel.textContent = t.balanceLabel;
+  var currEl = document.querySelector(".hero-amount .currency");
+  if (currEl) currEl.textContent = t.currency;
+
+  var statLabels = document.querySelectorAll(".hero-stat-label");
+  if (statLabels.length >= 2) {
+    statLabels[0].innerHTML = '<span class="dot" style="background:#34D399"></span>' + t.income;
+    statLabels[1].innerHTML = '<span class="dot" style="background:#FB7185"></span>' + t.expense;
+  }
+
+  var famTitle = $("fam-banner-title");
+  if (famTitle) famTitle.textContent = t.familyBannerTitle;
+  var famDesc = $("fam-banner-desc");
+  if (famDesc) famDesc.textContent = t.familyBannerDesc;
+  var famBtn = $("fam-banner-btn");
+  if (famBtn) famBtn.textContent = t.familyBannerBtn;
+
+  var qLabels = document.querySelectorAll(".quick-grid .quick-btn-label");
+  if (qLabels.length >= 5) {
+    qLabels[0].textContent = t.expense;
+    qLabels[1].textContent = t.income;
+    qLabels[2].textContent = t.scanner;
+    qLabels[3].textContent = t.family;
+    qLabels[4].textContent = t.navAi;
+  }
+
+  var filterPills = document.querySelectorAll(".filter-bar .pill");
+  if (filterPills.length >= 3) {
+    filterPills[0].textContent = t.all;
+    filterPills[1].textContent = t.expense;
+    filterPills[2].textContent = t.income;
+  }
+
+  var btnTheme = $("btn-settings-theme");
+  if (btnTheme) btnTheme.textContent = t.settingsTheme;
+  var btnCat = $("btn-settings-cat");
+  if (btnCat) btnCat.textContent = t.settingsCat;
+  var btnFam = $("btn-settings-fam");
+  if (btnFam) btnFam.textContent = t.settingsFamily;
+  var btnNotif = $("btn-settings-notif");
+  if (btnNotif) btnNotif.textContent = t.settingsNotif;
+  var btnHelp = $("btn-settings-help");
+  if (btnHelp) btnHelp.textContent = t.settingsHelp;
+
+  var h = new Date().getHours();
+  var greet = h < 6 ? t.greetingNight : h < 12 ? t.greetingMorning : h < 18 ? t.greetingAfternoon : t.greetingEvening;
+  var greetEl = $("greeting");
+  if (greetEl) greetEl.textContent = greet;
+
+  setType(currentType);
+}
+
+function openLangModal() {
+  var m = $("modal-lang");
+  if (m) m.classList.remove("hidden");
+}
+
+function closeLangModal() {
+  var m = $("modal-lang");
+  if (m) m.classList.add("hidden");
+}
+
+async function setAppLanguage(lang) {
+  if (!I18N[lang]) return;
+  applyLanguage(lang);
+  safeStorageSet("app_lang", lang);
+  closeLangModal();
+  toast(I18N[lang].langChanged, "success");
+  try {
+    await apiRequest("/api/user/language", {
+      method: "POST",
+      body: JSON.stringify({ language: lang })
+    });
+  } catch (_) {}
+}
+
 var proPlans = [];
 const defaultPlans = [
   { id: "1_month", name: "1 Oylik PRO", duration_days: 30, price: 14990, badge: "Boshlang'ich" },
@@ -1138,18 +1450,21 @@ function toggleTheme() {
 // ==========================================
 function setType(type) {
   currentType = type;
+  var t = (typeof I18N !== "undefined" && I18N[currentLang]) ? I18N[currentLang] : (typeof I18N !== "undefined" ? I18N.uz : null);
   if (type === "expense") {
-    $("form-title").textContent = "Yangi xarajat";
-    $("form-type-btn").textContent = "+ Kirim";
-    $("btn-save").textContent = "Xarajat qo'shish";
+    $("form-title").textContent = t ? t.newExpense : "Yangi xarajat";
+    $("form-type-btn").textContent = t ? "+ " + t.income : "+ Kirim";
+    $("btn-save").textContent = t ? t.saveExpense : "Xarajat qo'shish";
     $("btn-save").className = "btn";
-    $("label-nomi").textContent = "Nomi";
+    $("label-nomi").textContent = t ? t.nameLabel : "Nomi";
+    $("nomi").placeholder = t ? t.namePlaceholder : "Masalan: Non";
   } else {
-    $("form-title").textContent = "Yangi kirim";
-    $("form-type-btn").textContent = "+ Xarajat";
-    $("btn-save").textContent = "Kirim qo'shish";
+    $("form-title").textContent = t ? t.newIncome : "Yangi kirim";
+    $("form-type-btn").textContent = t ? "+ " + t.expense : "+ Xarajat";
+    $("btn-save").textContent = t ? t.saveIncome : "Kirim qo'shish";
     $("btn-save").className = "btn btn-success";
-    $("label-nomi").textContent = "Manba";
+    $("label-nomi").textContent = t ? t.sourceLabel : "Manba";
+    $("nomi").placeholder = t ? t.nameIncomePlaceholder : "Masalan: Oylik maosh";
   }
   var list = (type === "income") ? KAT_INCOME : KAT_EXPENSE;
   var custom = loadCustomCategories()[type] || [];
@@ -2783,10 +3098,17 @@ window.onload = function() {
   renderProfile();
   if (safeStorageGet("theme", "dark") === "light") document.body.classList.remove("dark");
   else document.body.classList.add("dark");
-  var h = new Date().getHours();
-  var greet = h < 6 ? "Xayrli tun" : h < 12 ? "Xayrli tong" : h < 18 ? "Xayrli kun" : "Xayrli kech";
-  $("greeting").textContent = greet;
-  setType("expense");
+  var urlLang = new URLSearchParams(window.location.search).get("lang");
+  var initialLang = (urlLang && I18N[urlLang]) ? urlLang : safeStorageGet("app_lang", null);
+  if (!initialLang && fallbackUser && fallbackUser.language_code) {
+    var tgLang = String(fallbackUser.language_code).toLowerCase();
+    if (tgLang.startsWith("ru")) initialLang = "ru";
+    else if (tgLang.startsWith("en")) initialLang = "en";
+    else initialLang = "uz";
+  }
+  if (!initialLang || !I18N[initialLang]) initialLang = "uz";
+  applyLanguage(initialLang);
+
   if (telegramInitData()) {
     setAccountSyncStatus("loading", "Telegram hisobingiz va serverdagi moliyaviy ma’lumotlar sinxronlanmoqda…");
   } else {
@@ -2832,7 +3154,12 @@ window.onload = function() {
           applySubscriptionStatus(directSubscription);
         }
         var authUser = await apiRequest("/api/auth", { method: "POST", body: "{}", timeoutMs: 12000 });
-        if (authUser) currentUser = authUser;
+        if (authUser) {
+          currentUser = authUser;
+          if (authUser.language && I18N[authUser.language] && !urlLang) {
+            applyLanguage(authUser.language);
+          }
+        }
         if (!directSubscription) {
           var userExpiry = localUserProExpiry(currentUser);
           applySubscriptionStatus({

@@ -611,6 +611,17 @@ app.post('/api/auth', requireDatabase, async (req, res) => {
       user.is_admin === true ||
       tidStr === '8987587901' ||
       tidStr === '6338890551';
+    let userLang = 'uz';
+    try {
+      const { data: langSetting } = await supabase.from('app_settings')
+        .select('value')
+        .eq('key', 'user_lang:' + tidStr)
+        .maybeSingle();
+      if (langSetting && langSetting.value && ['uz', 'ru', 'en'].includes(langSetting.value)) {
+        userLang = langSetting.value;
+      }
+    } catch (_) {}
+
     return res.json({
       ...user,
       isPro,
@@ -619,11 +630,31 @@ app.post('/api/auth', requireDatabase, async (req, res) => {
       pro_expires_at: proExpiresAt,
       isTrialActive: isTrial,
       daysLeft,
-      isAdmin: isUserAdmin
+      isAdmin: isUserAdmin,
+      language: userLang
     });
   } catch (error) {
     console.error('Auth xatosi:', error.message);
     return sendError(res, 503, 'Foydalanuvchini ro‘yxatdan o‘tkazib bo‘lmadi.');
+  }
+});
+
+app.post('/api/user/language', requireDatabase, requireTelegram, async (req, res) => {
+  const lang = String(req.body && req.body.language || '').toLowerCase().trim();
+  if (!['uz', 'ru', 'en'].includes(lang)) {
+    return sendError(res, 400, 'Noto‘g‘ri til kodi.');
+  }
+  const tidStr = String(req.identity.telegramId);
+  try {
+    await supabase.from('app_settings').upsert({
+      key: 'user_lang:' + tidStr,
+      value: lang,
+      updated_at: new Date().toISOString()
+    });
+    return res.json({ ok: true, language: lang });
+  } catch (error) {
+    console.error('Til sozlamasini saqlash xatosi:', error.message);
+    return sendError(res, 500, 'Til sozlamasini saqlab bo‘lmadi.');
   }
 });
 

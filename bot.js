@@ -512,7 +512,8 @@ async function handleStart(message, database = supabase) {
 
   const buttons = [];
   if (WEBAPP_URL) {
-    buttons.push([{ text: t.openApp, web_app: { url: WEBAPP_URL } }]);
+    const appUrlWithLang = WEBAPP_URL + (WEBAPP_URL.includes('?') ? '&' : '?') + 'lang=' + encodeURIComponent(lang);
+    buttons.push([{ text: t.openApp, web_app: { url: appUrlWithLang } }]);
   }
   buttons.push([{ text: t.changeLang, callback_data: 'setlang_prompt' }]);
 
