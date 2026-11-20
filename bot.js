@@ -200,6 +200,23 @@ async function setUserLanguage(userId, lang, database = supabase) {
       });
     } catch (_) {}
   }
+  await syncUserMenuButton(userId, lang);
+}
+
+async function syncUserMenuButton(chatId, lang) {
+  if (!WEBAPP_URL || !chatId || !TOKEN) return;
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
+  const appUrl = WEBAPP_URL + (WEBAPP_URL.includes('?') ? '&' : '?') + 'lang=' + encodeURIComponent(lang);
+  try {
+    await telegram('setChatMenuButton', {
+      chat_id: chatId,
+      menu_button: {
+        type: 'web_app',
+        text: t.openApp,
+        web_app: { url: appUrl }
+      }
+    });
+  } catch (_) {}
 }
 
 function getLanguageKeyboard() {
@@ -518,6 +535,8 @@ async function handleStart(message, database = supabase) {
   buttons.push([{ text: t.changeLang, callback_data: 'setlang_prompt' }]);
 
   const welcomeText = t.welcome(firstName, subscriptionText);
+
+  await syncUserMenuButton(chatId, lang);
 
   await telegram('sendMessage', {
     chat_id: chatId,
@@ -1204,6 +1223,7 @@ module.exports = {
   getLanguageKeyboard,
   getUserLanguage,
   setUserLanguage,
+  syncUserMenuButton,
   handleCallbackQuery,
   handlePaymentReceipt,
   handleStart,

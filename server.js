@@ -651,6 +651,29 @@ app.post('/api/user/language', requireDatabase, requireTelegram, async (req, res
       value: lang,
       updated_at: new Date().toISOString()
     });
+
+    const webappUrl = process.env.WEBAPP_URL || '';
+    if (BOT_TOKEN && webappUrl) {
+      const titles = {
+        uz: '📱 Ilovani ochish',
+        ru: '📱 Открыть Xarajat AI',
+        en: '📱 Open Xarajat AI'
+      };
+      const appUrl = webappUrl + (webappUrl.includes('?') ? '&' : '?') + 'lang=' + encodeURIComponent(lang);
+      fetch('https://api.telegram.org/bot' + BOT_TOKEN + '/setChatMenuButton', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: Number(tidStr),
+          menu_button: {
+            type: 'web_app',
+            text: titles[lang] || titles.uz,
+            web_app: { url: appUrl }
+          }
+        })
+      }).catch(() => {});
+    }
+
     return res.json({ ok: true, language: lang });
   } catch (error) {
     console.error('Til sozlamasini saqlash xatosi:', error.message);
