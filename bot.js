@@ -2,7 +2,11 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
 const TOKEN = process.env.BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN || '';
-const WEBAPP_URL = process.env.WEBAPP_URL || '';
+const DEFAULT_WEBAPP_URL = 'https://xarajat-server.onrender.com';
+const RAW_WEBAPP_URL = process.env.WEBAPP_URL || '';
+const WEBAPP_URL = (process.env.FORCE_VERCEL === 'true')
+  ? (RAW_WEBAPP_URL || DEFAULT_WEBAPP_URL)
+  : (RAW_WEBAPP_URL && !RAW_WEBAPP_URL.includes('vercel.app') ? RAW_WEBAPP_URL : DEFAULT_WEBAPP_URL);
 const PORT = process.env.PORT || 3000;
 const BACKEND_URL = (process.env.BACKEND_URL || ('http://127.0.0.1:' + PORT)).replace(/\/+$/, '');
 const BOT_INTERNAL_SECRET = process.env.BOT_INTERNAL_SECRET || '';

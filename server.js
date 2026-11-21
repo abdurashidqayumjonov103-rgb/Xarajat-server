@@ -14,9 +14,16 @@ const {
 } = require('./payments');
 
 const app = express();
-const allowedOrigins = process.env.APP_ORIGIN
-  ? process.env.APP_ORIGIN.split(',').map(value => new URL(value.trim()).origin)
-  : true;
+const configuredOrigins = process.env.APP_ORIGIN
+  ? process.env.APP_ORIGIN.split(',').map(value => {
+      try { return new URL(value.trim()).origin; } catch (_) { return value.trim(); }
+    }).filter(Boolean)
+  : [];
+if (configuredOrigins.length > 0) {
+  if (!configuredOrigins.includes('https://xarajatai.vercel.app')) configuredOrigins.push('https://xarajatai.vercel.app');
+  if (!configuredOrigins.includes('https://xarajat-server.onrender.com')) configuredOrigins.push('https://xarajat-server.onrender.com');
+}
+const allowedOrigins = configuredOrigins.length > 0 ? configuredOrigins : true;
 const receiptUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024, files: 1 },
@@ -652,7 +659,11 @@ app.post('/api/user/language', requireDatabase, requireTelegram, async (req, res
       updated_at: new Date().toISOString()
     });
 
-    const webappUrl = process.env.WEBAPP_URL || '';
+    const defaultWebappUrl = 'https://xarajat-server.onrender.com';
+    const rawWebapp = process.env.WEBAPP_URL || '';
+    const webappUrl = (process.env.FORCE_VERCEL === 'true')
+      ? (rawWebapp || defaultWebappUrl)
+      : (rawWebapp && !rawWebapp.includes('vercel.app') ? rawWebapp : defaultWebappUrl);
     if (BOT_TOKEN && webappUrl) {
       const titles = {
         uz: '📱 Ilovani ochish',
