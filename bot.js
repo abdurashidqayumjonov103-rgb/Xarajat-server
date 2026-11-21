@@ -145,7 +145,7 @@ const TRANSLATIONS = {
     subFree: '🆓 <b>Your subscription:</b> FREE plan (unlock PRO features in the app).',
     subTrial: (days) => '🎁 <b>Your subscription:</b> 7-day free PRO trial is active! Days left: <b>' + days + '</b>.',
     subPro: '👑 <b>Your subscription:</b> PRO plan is active (all features unlocked).',
-    openApp: '🚀 Open App',
+    openApp: '📱 Open Xarajat AI',
     changeLang: '🌐 Change language',
     receiptReceived: '✅ Your receipt has been received and sent to administrator. Your subscription will be activated upon approval.',
     askPlan: '❓ Please select the PRO plan you paid for using the buttons below:',

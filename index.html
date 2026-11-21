@@ -933,6 +933,21 @@ var I18N = {
     proSendReceiptBot: "To‘lov chekini botga yuboring",
     proSendReceiptApp: "Chekni ilovadan yuborish",
     proFeaturesTitle: "PRO imkoniyatlari",
+    emptyTitle: "Hali yo‘q",
+    emptyDesc: "Birinchi operatsiyani qo‘shing",
+    itemsCount: " ta",
+    totalIncome: "Jami kirim",
+    totalExpense: "Jami xarajat",
+    totalBalance: "Balans",
+    totalOps: "Operatsiyalar",
+    basicStats: "Asosiy statistika",
+    noStatsTitle: "Statistika uchun ma’lumot yo‘q",
+    noStatsDesc: "Kirim yoki xarajat qo‘shganingizdan so‘ng tahlil shu yerda ko‘rinadi.",
+    budgetNoneTitle: "Budjet belgilanmagan",
+    budgetNoneDesc: "Xarajatlaringizni kuzatish uchun oylik limit kiriting.",
+    budgetSpent: "Sarflangan",
+    budgetRemaining: "Qolgan",
+    budgetUsed: "% ishlatildi · Limit ",
     langChanged: "Til o‘zbek tiliga o‘zgartirildi"
   },
   ru: {
@@ -1026,6 +1041,21 @@ var I18N = {
     proSendReceiptBot: "Отправить чек оплаты в бот",
     proSendReceiptApp: "Отправить чек из приложения",
     proFeaturesTitle: "Возможности PRO",
+    emptyTitle: "Пока нет записей",
+    emptyDesc: "Добавьте свою первую операцию",
+    itemsCount: " шт.",
+    totalIncome: "Всего доходов",
+    totalExpense: "Всего расходов",
+    totalBalance: "Баланс",
+    totalOps: "Операции",
+    basicStats: "Основная статистика",
+    noStatsTitle: "Нет данных для статистики",
+    noStatsDesc: "После добавления доходов или расходов здесь появится аналитика.",
+    budgetNoneTitle: "Бюджет не установлен",
+    budgetNoneDesc: "Укажите месячный лимит для контроля расходов.",
+    budgetSpent: "Потрачено",
+    budgetRemaining: "Остаток",
+    budgetUsed: "% израсходовано · Лимит ",
     langChanged: "Язык успешно изменён на Русский"
   },
   en: {
@@ -1119,6 +1149,21 @@ var I18N = {
     proSendReceiptBot: "Send payment receipt to bot",
     proSendReceiptApp: "Send receipt from app",
     proFeaturesTitle: "PRO features",
+    emptyTitle: "No records yet",
+    emptyDesc: "Add your first transaction",
+    itemsCount: " items",
+    totalIncome: "Total income",
+    totalExpense: "Total expense",
+    totalBalance: "Balance",
+    totalOps: "Transactions",
+    basicStats: "General statistics",
+    noStatsTitle: "No statistics available",
+    noStatsDesc: "Add income or expense to see financial analysis here.",
+    budgetNoneTitle: "No budget set",
+    budgetNoneDesc: "Set a monthly spending limit to monitor your budget.",
+    budgetSpent: "Spent",
+    budgetRemaining: "Remaining",
+    budgetUsed: "% used · Limit ",
     langChanged: "Language successfully changed to English"
   }
 };
@@ -1292,6 +1337,7 @@ function applyLanguage(lang) {
   if (greetEl) greetEl.textContent = greet;
 
   setType(currentType);
+  yangila();
 }
 
 function openLangModal() {
@@ -2194,11 +2240,12 @@ function yangila() {
   var filtered = list; 
   if(currentFilter !== "all") filtered = list.filter(function(x){return x.type === currentFilter});
   
-  $("ops-count").textContent = filtered.length + " ta";
+  var t = (typeof I18N !== "undefined" && I18N[currentLang]) ? I18N[currentLang] : (typeof I18N !== "undefined" ? I18N.uz : null);
+  $("ops-count").textContent = filtered.length + (t ? t.itemsCount : " ta");
   var r = $("royxat");
   
   if (filtered.length === 0) {
-    r.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-title">Hali yo\'q</div><div class="empty-desc">Birinchi operatsiyani qo\'shing</div></div>';
+    r.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-title">' + (t ? t.emptyTitle : "Hali yo'q") + '</div><div class="empty-desc">' + (t ? t.emptyDesc : "Birinchi operatsiyani qo'shing") + '</div></div>';
   } else {
     var html = "";
     for (var j = 0; j < filtered.length; j++) {
@@ -2301,16 +2348,18 @@ function renderBudgetSummary(list) {
       date.getMonth() === month.getMonth() ? total + (Number(item.summa) || 0) : total;
   }, 0);
   var summary = $("budget-summary");
+  var t = (typeof I18N !== "undefined" && I18N[currentLang]) ? I18N[currentLang] : (typeof I18N !== "undefined" ? I18N.uz : null);
   if (!limit) {
-    summary.innerHTML = '<div class="empty" style="padding:18px"><div class="empty-title">Budjet belgilanmagan</div><div class="empty-desc">Xarajatlaringizni kuzatish uchun oylik limit kiriting.</div></div>';
+    summary.innerHTML = '<div class="empty" style="padding:18px"><div class="empty-title">' + (t ? t.budgetNoneTitle : "Budjet belgilanmagan") + '</div><div class="empty-desc">' + (t ? t.budgetNoneDesc : "Xarajatlaringizni kuzatish uchun oylik limit kiriting.") + '</div></div>';
     return;
   }
   var percent = Math.min(100, Math.round(spent / limit * 100));
-  summary.innerHTML = '<div class="settings-row"><span>Sarflangan</span><b>' + fmt(spent) + ' UZS</b></div>' +
-    '<div class="settings-row"><span>Qolgan</span><b>' + fmt(Math.max(0, limit - spent)) + ' UZS</b></div>' +
+  var curr = t ? t.currency : "UZS";
+  summary.innerHTML = '<div class="settings-row"><span>' + (t ? t.budgetSpent : "Sarflangan") + '</span><b>' + fmt(spent) + ' ' + curr + '</b></div>' +
+    '<div class="settings-row"><span>' + (t ? t.budgetRemaining : "Qolgan") + '</span><b>' + fmt(Math.max(0, limit - spent)) + ' ' + curr + '</b></div>' +
     '<div class="category-track" style="height:9px;margin-top:12px"><span style="width:' + percent + '%;background:' +
     (percent >= 100 ? 'var(--danger)' : 'linear-gradient(90deg,#44D698,#148253)') + '"></span></div>' +
-    '<div class="tx-meta" style="margin-top:7px">' + percent + '% ishlatildi · Limit ' + fmt(limit) + ' UZS</div>';
+    '<div class="tx-meta" style="margin-top:7px">' + percent + (t ? t.budgetUsed : '% ishlatildi · Limit ') + fmt(limit) + ' ' + curr + '</div>';
 }
 
 function saveBudget() {
@@ -2377,6 +2426,7 @@ async function loadCategories(timeoutMs) {
   KAT_EXPENSE = categories.expense;
   KAT_INCOME = categories.income;
   setType(currentType);
+  yangila();
 }
 
 async function loadHelpSettings() {
@@ -2430,7 +2480,12 @@ function renderUmumiy(list) {
     if (list[i].type === "income") inc += list[i].summa;
     else exp += list[i].summa;
   }
-  el.innerHTML = '<div class="settings-row"><span class="label">Jami kirim</span><span class="value" style="color:var(--success)">+' + fmt(inc) + '</span></div><div class="settings-row"><span class="label">Jami xarajat</span><span class="value">−' + fmt(exp) + '</span></div><div class="settings-row"><span class="label"><b>Balans</b></span><span class="value" style="color:var(--primary)">' + fmt(inc - exp) + '</span></div><div class="settings-row"><span class="label">Operatsiyalar</span><span class="value">' + list.length + '</span></div>';
+  var t = (typeof I18N !== "undefined" && I18N[currentLang]) ? I18N[currentLang] : (typeof I18N !== "undefined" ? I18N.uz : null);
+  var curr = t ? t.currency : "so'm";
+  el.innerHTML = '<div class="settings-row"><span class="label">' + (t ? t.totalIncome : "Jami kirim") + '</span><span class="value" style="color:var(--success)">+' + fmt(inc) + ' ' + curr + '</span></div>' +
+    '<div class="settings-row"><span class="label">' + (t ? t.totalExpense : "Jami xarajat") + '</span><span class="value">−' + fmt(exp) + ' ' + curr + '</span></div>' +
+    '<div class="settings-row"><span class="label"><b>' + (t ? t.totalBalance : "Balans") + '</b></span><span class="value" style="color:var(--primary)">' + fmt(inc - exp) + ' ' + curr + '</span></div>' +
+    '<div class="settings-row"><span class="label">' + (t ? t.totalOps : "Operatsiyalar") + '</span><span class="value">' + list.length + '</span></div>';
 }
 
 function reportRows() {
@@ -2450,13 +2505,15 @@ function renderStats() {
     if (list[i].type === "income") basicIncome += Number(list[i].summa) || 0;
     else basicExpense += Number(list[i].summa) || 0;
   }
+  var t = (typeof I18N !== "undefined" && I18N[currentLang]) ? I18N[currentLang] : (typeof I18N !== "undefined" ? I18N.uz : null);
+  var curr = t ? t.currency : "UZS";
   $("stats-basic").innerHTML = list.length
-    ? '<div class="section-title" style="margin-bottom:8px">Asosiy statistika</div>' +
-      '<div class="settings-row"><span>Jami kirim</span><b style="color:var(--success)">+' + fmt(basicIncome) + ' UZS</b></div>' +
-      '<div class="settings-row"><span>Jami xarajat</span><b>−' + fmt(basicExpense) + ' UZS</b></div>' +
-      '<div class="settings-row"><span>Balans</span><b>' + fmt(basicIncome - basicExpense) + ' UZS</b></div>' +
-      '<div class="settings-row"><span>Operatsiyalar</span><b>' + list.length + '</b></div>'
-    : '<div class="empty"><div class="empty-title">Statistika uchun ma’lumot yo‘q</div><div class="empty-desc">Kirim yoki xarajat qo‘shganingizdan so‘ng tahlil shu yerda ko‘rinadi.</div></div>';
+    ? '<div class="section-title" style="margin-bottom:8px">' + (t ? t.basicStats : "Asosiy statistika") + '</div>' +
+      '<div class="settings-row"><span>' + (t ? t.totalIncome : "Jami kirim") + '</span><b style="color:var(--success)">+' + fmt(basicIncome) + ' ' + curr + '</b></div>' +
+      '<div class="settings-row"><span>' + (t ? t.totalExpense : "Jami xarajat") + '</span><b>−' + fmt(basicExpense) + ' ' + curr + '</b></div>' +
+      '<div class="settings-row"><span>' + (t ? t.totalBalance : "Balans") + '</span><b>' + fmt(basicIncome - basicExpense) + ' ' + curr + '</b></div>' +
+      '<div class="settings-row"><span>' + (t ? t.totalOps : "Operatsiyalar") + '</span><b>' + list.length + '</b></div>'
+    : '<div class="empty"><div class="empty-title">' + (t ? t.noStatsTitle : "Statistika uchun ma’lumot yo‘q") + '</div><div class="empty-desc">' + (t ? t.noStatsDesc : "Kirim yoki xarajat qo‘shganingizdan so‘ng tahlil shu yerda ko‘rinadi.") + '</div></div>';
 
   var activePro = clientProIsActive();
   $("stats-pro").classList.toggle("hidden", !activePro);
@@ -2473,9 +2530,9 @@ function renderStats() {
     }
   }
   $("report-summary").innerHTML =
-    '<div class="settings-row"><span>Kirim</span><b style="color:var(--success)">+' + fmt(income) + ' UZS</b></div>' +
-    '<div class="settings-row"><span>Xarajat</span><b>−' + fmt(expense) + ' UZS</b></div>' +
-    '<div class="settings-row"><span>Natija</span><b>' + fmt(income - expense) + ' UZS</b></div>';
+    '<div class="settings-row"><span>' + (t ? t.income : "Kirim") + '</span><b style="color:var(--success)">+' + fmt(income) + ' ' + curr + '</b></div>' +
+    '<div class="settings-row"><span>' + (t ? t.expense : "Xarajat") + '</span><b>−' + fmt(expense) + ' ' + curr + '</b></div>' +
+    '<div class="settings-row"><span>' + (t ? t.totalBalance : "Natija") + '</span><b>' + fmt(income - expense) + ' ' + curr + '</b></div>';
 
   var max = Math.max.apply(null, Object.keys(categories).map(function(key) { return categories[key]; }).concat([1]));
   var keys = Object.keys(categories).sort(function(a, b) { return categories[b] - categories[a]; });
