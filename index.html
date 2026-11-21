@@ -386,12 +386,38 @@ body:not(.dark) .card, body:not(.dark) .tx-row, body:not(.dark) .quick-btn { bac
       <button class="quick-btn" onclick="sahifa('chek')"><div class="quick-btn-icon" style="background:var(--primary-soft);color:var(--primary)"><svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div><span class="quick-btn-label">Skaner</span></button>
       <button class="quick-btn" onclick="sahifa('family')"><div class="quick-btn-icon" style="background:#f3e8ff;color:#9333ea"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><span class="quick-btn-label">Oila</span></button>
       <button class="quick-btn" onclick="sahifa('ai')"><div class="quick-btn-icon" style="background:var(--warning-soft);color:var(--warning)"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></div><span class="quick-btn-label">AI</span></button>
+      <button class="quick-btn" onclick="openConverterModal()"><div class="quick-btn-icon" style="background:#e0f2fe;color:#0284c7">💱</div><span class="quick-btn-label" id="quick-lbl-kurs">Kurslar</span></button>
+    </div>
+    <div id="live-currency-bar" class="card" style="margin-bottom:12px;padding:10px 14px;cursor:pointer;background:linear-gradient(135deg,rgba(16,185,129,0.08),rgba(2,132,199,0.08));border:1px solid rgba(16,185,129,0.2)" onclick="openConverterModal()">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px">
+        <span style="font-weight:700;display:flex;align-items:center;gap:6px">💱 <span id="lbl-cbu-rates">MB Rasmiy kurslari:</span></span>
+        <span style="color:var(--primary);font-size:11px;font-weight:600" id="lbl-cbu-open">Konvertor ➔</span>
+      </div>
+      <div id="cbu-rates-ticker" style="display:flex;justify-content:space-between;margin-top:6px;font-size:12px;font-weight:600;flex-wrap:wrap;gap:6px">
+        <span>🇺🇸 USD: <b id="ticker-usd">...</b></span>
+        <span>🇪🇺 EUR: <b id="ticker-eur">...</b></span>
+        <span>🇷🇺 RUB: <b id="ticker-rub">...</b></span>
+        <span>🇰🇿 KZT: <b id="ticker-kzt">...</b></span>
+      </div>
     </div>
     <div class="section" data-account-data>
       <div class="section-header"><div class="section-title" id="form-title">Yangi xarajat</div><button class="section-action" onclick="toggleFormType()" id="form-type-btn">+ Kirim</button></div>
       <div class="card">
         <div class="form-group"><label class="form-label" id="label-nomi">Nomi</label><input id="nomi" class="input" placeholder="Masalan: Non" autocomplete="off" /></div>
-        <div class="form-group"><label class="form-label">Summa</label><input id="summa" class="input num" type="number" inputmode="numeric" placeholder="0" autocomplete="off" /></div>
+        <div class="form-group">
+          <label class="form-label" id="label-summa">Summa</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input id="summa" class="input num" style="flex:1" type="number" inputmode="numeric" placeholder="0" autocomplete="off" oninput="updateCurrencyPreview()" />
+            <select id="tx-currency" class="select" style="width:105px;font-weight:700" onchange="onCurrencyChange()">
+              <option value="UZS" selected>UZS</option>
+              <option value="USD">USD 💵</option>
+              <option value="RUB">RUB ₽</option>
+              <option value="EUR">EUR €</option>
+              <option value="KZT">KZT ₸</option>
+            </select>
+          </div>
+          <div id="currency-convert-preview" style="font-size:12px;color:var(--primary);font-weight:600;margin-top:6px;display:none"></div>
+        </div>
         <div class="form-group"><label class="form-label">Kategoriya</label><select id="kategoriya" class="select"></select></div>
         <button class="btn" id="btn-save" onclick="qosh()">Saqlash</button>
       </div>
@@ -820,6 +846,50 @@ body:not(.dark) .card, body:not(.dark) .tx-row, body:not(.dark) .quick-btn { bac
   </div>
 </div>
 
+<div id="modal-converter" class="modal hidden" onclick="if(event.target===this)closeConverterModal()">
+  <div class="modal-card" style="max-width:380px;margin:auto">
+    <div class="section-header" style="margin-bottom:14px">
+      <div class="section-title" id="conv-modal-title">💱 Valyuta konvertori</div>
+      <button class="section-action" onclick="closeConverterModal()">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="form-group">
+        <label class="form-label" id="conv-lbl-amount">Miqdor</label>
+        <input id="conv-amount" class="input num" type="number" inputmode="numeric" placeholder="100" value="100" oninput="calcConverter()" />
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <div style="flex:1">
+          <label class="form-label" id="conv-lbl-from">Qaysi valyutadan</label>
+          <select id="conv-from" class="select" onchange="calcConverter()">
+            <option value="USD" selected>USD (AQSH dollari)</option>
+            <option value="EUR">EUR (Yevro)</option>
+            <option value="RUB">RUB (Rossiya rubli)</option>
+            <option value="KZT">KZT (Qozog‘iston tengesi)</option>
+            <option value="UZS">UZS (O‘zbek so‘mi)</option>
+          </select>
+        </div>
+        <button type="button" style="margin-top:20px;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:10px;cursor:pointer;font-weight:700" onclick="swapConverter()">⇄</button>
+        <div style="flex:1">
+          <label class="form-label" id="conv-lbl-to">Qaysi valyutaga</label>
+          <select id="conv-to" class="select" onchange="calcConverter()">
+            <option value="UZS" selected>UZS (O‘zbek so‘mi)</option>
+            <option value="USD">USD (AQSH dollari)</option>
+            <option value="EUR">EUR (Yevro)</option>
+            <option value="RUB">RUB (Rossiya rubli)</option>
+            <option value="KZT">KZT (Qozog‘iston tengesi)</option>
+          </select>
+        </div>
+      </div>
+      <div class="card" style="text-align:center;padding:16px;background:var(--primary-soft);border:1px solid rgba(16,185,129,0.25)">
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:4px" id="conv-lbl-result">Natija:</div>
+        <div style="font-size:24px;font-weight:800;color:var(--primary)" id="conv-result-val">0 UZS</div>
+        <div style="font-size:11px;color:var(--text-2);margin-top:4px" id="conv-rate-info"></div>
+      </div>
+      <div style="font-size:11px;color:var(--text-2);text-align:center" id="conv-lbl-disclaimer">O‘zbekiston Respublikasi Markaziy Banki rasmiy kursi asosida</div>
+    </div>
+  </div>
+</div>
+
 <nav class="bottom-nav">
   <div class="nav-list">
     <button class="nav-btn active" data-page="home" onclick="sahifa('home')"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Bosh</button>
@@ -948,6 +1018,16 @@ var I18N = {
     budgetSpent: "Sarflangan",
     budgetRemaining: "Qolgan",
     budgetUsed: "% ishlatildi · Limit ",
+    ratesTitle: "MB Rasmiy kurslari:",
+    quickRates: "Kurslar",
+    convTitle: "Valyuta konvertori",
+    convAmount: "Miqdor",
+    convFrom: "Qaysi valyutadan",
+    convTo: "Qaysi valyutaga",
+    convResult: "Natija:",
+    convDisclaimer: "O‘zbekiston Respublikasi Markaziy Banki rasmiy kursi asosida",
+    convOpen: "Konvertor ➔",
+    approxInUzs: "so‘m",
     langChanged: "Til o‘zbek tiliga o‘zgartirildi"
   },
   ru: {
@@ -1056,6 +1136,16 @@ var I18N = {
     budgetSpent: "Потрачено",
     budgetRemaining: "Остаток",
     budgetUsed: "% израсходовано · Лимит ",
+    ratesTitle: "Курсы ЦБ РУз:",
+    quickRates: "Курсы",
+    convTitle: "Конвертер валют",
+    convAmount: "Сумма",
+    convFrom: "Из валюты",
+    convTo: "В валюту",
+    convResult: "Результат:",
+    convDisclaimer: "По официальному курсу Центрального Банка Республики Узбекистан",
+    convOpen: "Конвертер ➔",
+    approxInUzs: "сум",
     langChanged: "Язык успешно изменён на Русский"
   },
   en: {
@@ -1164,6 +1254,16 @@ var I18N = {
     budgetSpent: "Spent",
     budgetRemaining: "Remaining",
     budgetUsed: "% used · Limit ",
+    ratesTitle: "Official CBU rates:",
+    quickRates: "Rates",
+    convTitle: "Currency converter",
+    convAmount: "Amount",
+    convFrom: "From currency",
+    convTo: "To currency",
+    convResult: "Result:",
+    convDisclaimer: "Based on official Central Bank of Uzbekistan exchange rates",
+    convOpen: "Converter ➔",
+    approxInUzs: "UZS",
     langChanged: "Language successfully changed to English"
   }
 };
@@ -1336,6 +1436,27 @@ function applyLanguage(lang) {
   var greetEl = $("greeting");
   if (greetEl) greetEl.textContent = greet;
 
+  var lblCbu = $("lbl-cbu-rates");
+  if (lblCbu) lblCbu.textContent = t.ratesTitle;
+  var lblCbuOpen = $("lbl-cbu-open");
+  if (lblCbuOpen) lblCbuOpen.textContent = t.convOpen;
+  var quickKurs = $("quick-lbl-kurs");
+  if (quickKurs) quickKurs.textContent = t.quickRates;
+  var convModalTitle = $("conv-modal-title");
+  if (convModalTitle) convModalTitle.textContent = "💱 " + t.convTitle;
+  var convLblAmount = $("conv-lbl-amount");
+  if (convLblAmount) convLblAmount.textContent = t.convAmount;
+  var convLblFrom = $("conv-lbl-from");
+  if (convLblFrom) convLblFrom.textContent = t.convFrom;
+  var convLblTo = $("conv-lbl-to");
+  if (convLblTo) convLblTo.textContent = t.convTo;
+  var convLblResult = $("conv-lbl-result");
+  if (convLblResult) convLblResult.textContent = t.convResult;
+  var convLblDisc = $("conv-lbl-disclaimer");
+  if (convLblDisc) convLblDisc.textContent = t.convDisclaimer;
+  if (typeof updateCurrencyPreview === "function") updateCurrencyPreview();
+  if (typeof calcConverter === "function") calcConverter();
+
   setType(currentType);
   yangila();
 }
@@ -1362,6 +1483,133 @@ async function setAppLanguage(lang) {
       body: JSON.stringify({ language: lang })
     });
   } catch (_) {}
+}
+
+var liveCurrencyRates = {
+  USD: { rate: 12850, diff: 0 },
+  EUR: { rate: 13950, diff: 0 },
+  RUB: { rate: 138, diff: 0 },
+  KZT: { rate: 26, diff: 0 }
+};
+
+function renderCurrencyTicker() {
+  if (!liveCurrencyRates) return;
+  var u = liveCurrencyRates.USD;
+  var e = liveCurrencyRates.EUR;
+  var r = liveCurrencyRates.RUB;
+  var k = liveCurrencyRates.KZT;
+  if ($("ticker-usd") && u) $("ticker-usd").textContent = fmt(Math.round(u.rate)) + (u.diff > 0 ? " ▲" : u.diff < 0 ? " ▼" : "");
+  if ($("ticker-eur") && e) $("ticker-eur").textContent = fmt(Math.round(e.rate)) + (e.diff > 0 ? " ▲" : e.diff < 0 ? " ▼" : "");
+  if ($("ticker-rub") && r) $("ticker-rub").textContent = fmt(Math.round(r.rate)) + (r.diff > 0 ? " ▲" : r.diff < 0 ? " ▼" : "");
+  if ($("ticker-kzt") && k) $("ticker-kzt").textContent = fmt(Math.round(k.rate)) + (k.diff > 0 ? " ▲" : k.diff < 0 ? " ▼" : "");
+}
+
+async function loadCurrencyRates() {
+  try {
+    var data = await apiRequest("/api/currency/rates");
+    if (data && data.rates) {
+      liveCurrencyRates = data.rates;
+      renderCurrencyTicker();
+      updateCurrencyPreview();
+      calcConverter();
+    }
+  } catch (err) {
+    try {
+      var cbuRes = await fetch("https://cbu.uz/uz/arkhiv-kursov-valyut/json/");
+      if (cbuRes.ok) {
+        var cbuData = await cbuRes.json();
+        if (Array.isArray(cbuData)) {
+          var map = {};
+          for (var i = 0; i < cbuData.length; i++) {
+            var item = cbuData[i];
+            if (["USD", "EUR", "RUB", "KZT"].indexOf(item.Ccy) >= 0) {
+              map[item.Ccy] = {
+                ccy: item.Ccy,
+                rate: parseFloat(item.Rate) || 0,
+                diff: parseFloat(item.Diff) || 0
+              };
+            }
+          }
+          if (Object.keys(map).length > 0) {
+            liveCurrencyRates = map;
+            renderCurrencyTicker();
+            updateCurrencyPreview();
+            calcConverter();
+          }
+        }
+      }
+    } catch (_) {}
+  }
+}
+
+function openConverterModal() {
+  var m = $("modal-converter");
+  if (m) m.classList.remove("hidden");
+  calcConverter();
+}
+
+function closeConverterModal() {
+  var m = $("modal-converter");
+  if (m) m.classList.add("hidden");
+}
+
+function swapConverter() {
+  var fromSel = $("conv-from");
+  var toSel = $("conv-to");
+  if (!fromSel || !toSel) return;
+  var tmp = fromSel.value;
+  fromSel.value = toSel.value;
+  toSel.value = tmp;
+  calcConverter();
+}
+
+function getRateToUzs(ccy) {
+  if (ccy === "UZS") return 1;
+  return (liveCurrencyRates && liveCurrencyRates[ccy] && Number(liveCurrencyRates[ccy].rate)) || 1;
+}
+
+function calcConverter() {
+  var amount = parseFloat($("conv-amount") ? $("conv-amount").value : 0) || 0;
+  var fromCcy = $("conv-from") ? $("conv-from").value : "USD";
+  var toCcy = $("conv-to") ? $("conv-to").value : "UZS";
+  var fromRate = getRateToUzs(fromCcy);
+  var toRate = getRateToUzs(toCcy);
+  
+  var inUzs = amount * fromRate;
+  var result = toRate > 0 ? (inUzs / toRate) : 0;
+  
+  var resStr = "";
+  if (toCcy === "UZS") resStr = fmt(Math.round(result)) + " UZS";
+  else resStr = result.toLocaleString("uz-UZ", { maximumFractionDigits: 2 }) + " " + toCcy;
+
+  if ($("conv-result-val")) $("conv-result-val").textContent = resStr;
+  if ($("conv-rate-info")) {
+    var rateRatio = fromRate / toRate;
+    $("conv-rate-info").textContent = "1 " + fromCcy + " ≈ " + (rateRatio < 1 ? rateRatio.toFixed(4) : rateRatio.toFixed(2)) + " " + toCcy;
+  }
+}
+
+function onCurrencyChange() {
+  updateCurrencyPreview();
+}
+
+function updateCurrencyPreview() {
+  var sel = $("tx-currency");
+  var ccy = sel ? sel.value : "UZS";
+  var preview = $("currency-convert-preview");
+  if (!preview) return;
+  if (ccy === "UZS") {
+    preview.style.display = "none";
+    preview.textContent = "";
+    return;
+  }
+  var raw = parseFloat($("summa") ? $("summa").value : 0) || 0;
+  var rate = getRateToUzs(ccy);
+  var approx = Math.round(raw * rate);
+  var t = (typeof I18N !== "undefined" && I18N[currentLang]) ? I18N[currentLang] : (typeof I18N !== "undefined" ? I18N.uz : null);
+  var approxWord = t ? t.approxInUzs : "so‘m";
+  preview.style.display = "block";
+  preview.textContent = "≈ " + fmt(approx) + " " + approxWord + " (1 " + ccy + " = " + fmt(Math.round(rate)) + " UZS)";
 }
 
 var proPlans = [];
@@ -1773,7 +2021,14 @@ async function qosh() {
     return toast("Hisob server bilan sinxronlanmagan. Aloqa tiklangach qayta urinib ko‘ring.", "error");
   }
   var nomi = $("nomi").value.trim();
-  var summa = Number($("summa").value);
+  var rawSumma = Number($("summa").value);
+  var selCurr = $("tx-currency") ? $("tx-currency").value : "UZS";
+  var summa = rawSumma;
+  if (selCurr !== "UZS") {
+    var rate = getRateToUzs(selCurr);
+    summa = Math.round(rawSumma * rate);
+    nomi = nomi + " (" + rawSumma + " " + selCurr + ")";
+  }
   var kategoriya = $("kategoriya").value;
   if (!nomi || nomi.length > 100) return toast("Nomi 1–100 belgi bo‘lishi kerak.", "error");
   if (!Number.isSafeInteger(summa) || summa <= 0 || summa > 1000000000000) return toast("Summani 1 dan 1 000 000 000 000 UZS gacha kiriting.", "error");
@@ -1784,6 +2039,8 @@ async function qosh() {
     list.unshift(saved || item);
     saveTx(list);
     $("nomi").value = ""; $("summa").value = "";
+    if ($("currency-convert-preview")) { $("currency-convert-preview").style.display = "none"; $("currency-convert-preview").textContent = ""; }
+    if ($("tx-currency")) $("tx-currency").value = "UZS";
     yangila();
     toast(saved ? "Hisob serverga saqlandi" : "Qurilmada saqlandi", "success");
   } catch (error) {
@@ -3385,8 +3642,10 @@ window.onload = function() {
   renderProfile();
   if (safeStorageGet("theme", "dark") === "light") document.body.classList.remove("dark");
   else document.body.classList.add("dark");
-  var urlLang = new URLSearchParams(window.location.search).get("lang");
-  var initialLang = (urlLang && I18N[urlLang]) ? urlLang : safeStorageGet("app_lang", null);
+  var urlParams = new URLSearchParams(window.location.search);
+  var urlLang = urlParams.get("lang");
+  var savedLang = safeStorageGet("app_lang", null);
+  var initialLang = (savedLang && I18N[savedLang]) ? savedLang : ((urlLang && I18N[urlLang]) ? urlLang : null);
   if (!initialLang && fallbackUser && fallbackUser.language_code) {
     var tgLang = String(fallbackUser.language_code).toLowerCase();
     if (tgLang.startsWith("ru")) initialLang = "ru";
@@ -3401,6 +3660,10 @@ window.onload = function() {
   } else {
     setAccountSyncStatus("guest", "");
     yangila();
+  }
+  loadCurrencyRates();
+  if (urlParams.get("page") === "converter") {
+    openConverterModal();
   }
   $("ai-input").addEventListener("keydown", function(event) {
     if (event.key === "Enter" && !event.shiftKey) {
@@ -3436,10 +3699,14 @@ window.onload = function() {
     }
     if (telegramInitData()) {
       try {
-        var authUser = await apiRequest("/api/auth", { method: "POST", body: "{}", timeoutMs: 12000 });
+        var authUser = await apiRequest("/api/auth", {
+          method: "POST",
+          body: JSON.stringify({ language: initialLang }),
+          timeoutMs: 12000
+        });
         if (authUser) {
           currentUser = authUser;
-          if (authUser.language && I18N[authUser.language]) {
+          if (!savedLang && authUser.language && I18N[authUser.language]) {
             applyLanguage(authUser.language);
           }
         }

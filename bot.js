@@ -80,7 +80,10 @@ const TRANSLATIONS = {
       '3-month': '3 Oylik PRO (44 990)',
       '6-month': '6 Oylik PRO (89 990)',
       '12-month': '1 Yillik PRO (179 990)'
-    }
+    },
+    ratesTitle: "💱 <b>Markaziy Bank rasmiy valyuta kurslari:</b>",
+    ratesFooter: "Valyuta konvertori va hisob-kitob uchun tugmani bosing:",
+    btnConvert: "💱 Valyuta konvertori"
   },
   ru: {
     langName: "🇷🇺 Русский",
@@ -122,7 +125,10 @@ const TRANSLATIONS = {
       '3-month': '3 месяца PRO (44 990)',
       '6-month': '6 месяцев PRO (89 990)',
       '12-month': '1 год PRO (179 990)'
-    }
+    },
+    ratesTitle: "💱 <b>Официальные курсы валют ЦБ РУз:</b>",
+    ratesFooter: "Нажмите кнопку ниже, чтобы открыть конвертер валют:",
+    btnConvert: "💱 Конвертер валют"
   },
   en: {
     langName: "🇬🇧 English",
@@ -164,7 +170,10 @@ const TRANSLATIONS = {
       '3-month': '3 Months PRO (44,990)',
       '6-month': '6 Months PRO (89,990)',
       '12-month': '1 Year PRO (179,990)'
-    }
+    },
+    ratesTitle: "💱 <b>Central Bank of Uzbekistan official exchange rates:</b>",
+    ratesFooter: "Click the button below to open the currency converter:",
+    btnConvert: "💱 Currency converter"
   }
 };
 
@@ -575,6 +584,101 @@ async function handleHelpCommand(message, database = supabase) {
   });
 }
 
+async function handleCurrencyCommand(message, database = supabase) {
+  const chatId = message.chat.id;
+  const lang = await getUserLanguage(chatId, database);
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
+  
+  try {
+    let rates = null;
+    try {
+      const res = await fetch((BACKEND_URL || 'https://xarajat-server.onrender.com') + '/api/currency/rates');
+      if (res.ok) {
+        const json = await res.json();
+        if (json && json.rates) rates = json.rates;
+      }
+    } catch (_) {}
+
+    if (!rates) {
+      const cbuRes = await fetch('https://cbu.uz/uz/arkhiv-kursov-valyut/json/');
+      if (cbuRes.ok) {
+        const cbuData = await cbuRes.json();
+        if (Array.isArray(cbuData)) {
+          rates = {};
+          for (const item of cbuData) {
+            if (['USD', 'EUR', 'RUB', 'KZT'].includes(item.Ccy)) {
+              rates[item.Ccy] = {
+                ccy: item.Ccy,
+                rate: parseFloat(item.Rate) || 0,
+                diff: parseFloat(item.Diff) || 0,
+                nameUz: item.CcyNm_UZ,
+                nameRu: item.CcyNm_RU,
+                nameEn: item.CcyNm_EN
+              };
+            }
+          }
+        }
+      }
+    }
+
+    if (!rates || Object.keys(rates).length === 0) {
+      await telegram('sendMessage', {
+        chat_id: chatId,
+        text: '⚠️ Valyuta kurslarini yuklab bo‘lmadi. Birozdan so‘ng qayta urinib ko‘ring.'
+      });
+      return;
+    }
+
+    const fmtNum = num => Number(num || 0).toLocaleString('uz-UZ', { maximumFractionDigits: 2 });
+    const getDiffStr = diff => {
+      const d = Number(diff || 0);
+      if (d > 0) return '📈 +' + fmtNum(d);
+      if (d < 0) return '📉 ' + fmtNum(d);
+      return '➖ 0';
+    };
+
+    const flagMap = { USD: '🇺🇸', EUR: '🇪🇺', RUB: '🇷🇺', KZT: '🇰🇿' };
+    const getName = (item, l) => {
+      if (l === 'ru') return item.nameRu || item.ccy;
+      if (l === 'en') return item.nameEn || item.ccy;
+      return item.nameUz || item.ccy;
+    };
+
+    const lines = [
+      t.ratesTitle || '💱 <b>Markaziy Bank rasmiy valyuta kurslari:</b>',
+      ''
+    ];
+
+    ['USD', 'EUR', 'RUB', 'KZT'].forEach(code => {
+      const c = rates[code];
+      if (c) {
+        const flag = flagMap[code] || '🪙';
+        const name = getName(c, lang);
+        lines.push(`${flag} <b>1 ${code}</b> (${name}) = <b>${fmtNum(c.rate)} UZS</b> [${getDiffStr(c.diff)}]`);
+      }
+    });
+
+    lines.push('');
+    lines.push(t.ratesFooter || 'Valyuta konvertori va hisob-kitob uchun tugmani bosing:');
+
+    const buttons = [];
+    if (WEBAPP_URL) {
+      const appUrlWithLang = WEBAPP_URL + (WEBAPP_URL.includes('?') ? '&' : '?') + 'lang=' + encodeURIComponent(lang);
+      buttons.push([{ text: t.btnConvert || '💱 Valyuta konvertori', web_app: { url: appUrlWithLang } }]);
+    }
+
+    await telegram('sendMessage', {
+      chat_id: chatId,
+      text: lines.join('\n'),
+      parse_mode: 'HTML',
+      reply_markup: buttons.length ? { inline_keyboard: buttons } : undefined
+    });
+  } catch (err) {
+    console.error('handleCurrencyCommand xatosi:', err.message);
+    await telegram('sendMessage', { chat_id: chatId, text: '⚠️ ' + friendlyBotError(err) });
+  }
+}
+
 function planDurationMonths(planId) {
   const explicitMonths = String(planId || '').match(/^months_(\d{1,2})$/);
   if (explicitMonths) {
@@ -967,6 +1071,10 @@ async function handleAdminCommand(message, database = supabase) {
     await handleHelpCommand(message, database);
     return;
   }
+  if (command === '/kurs' || command === '/valyuta' || command === '/rates' || command === '/rate') {
+    await handleCurrencyCommand(message, database);
+    return;
+  }
 
   if (!isAdmin(actorId)) {
     await telegram('sendMessage', { chat_id: message.chat.id, text: 'Bu buyruq faqat administrator uchun.' });
@@ -1201,6 +1309,8 @@ async function startBot() {
           await handleLanguageCommand(update.message);
         } else if (/^\/(?:help|yordam)(?:@\w+)?(?:\s|$)/i.test(update.message.text)) {
           await handleHelpCommand(update.message);
+        } else if (/^\/(?:kurs|valyuta|rates?)(?:@\w+)?(?:\s|$)/i.test(update.message.text)) {
+          await handleCurrencyCommand(update.message);
         } else if (update.message.text.startsWith('/')) {
           await handleAdminCommand(update.message);
         }
@@ -1233,6 +1343,7 @@ module.exports = {
   handleStart,
   handleLanguageCommand,
   handleHelpCommand,
+  handleCurrencyCommand,
   handleAdminCommand,
   isAdmin,
   startBot

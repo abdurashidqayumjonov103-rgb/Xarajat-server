@@ -626,6 +626,13 @@ app.post('/api/auth', requireDatabase, async (req, res) => {
         .maybeSingle();
       if (langSetting && langSetting.value && ['uz', 'ru', 'en'].includes(langSetting.value)) {
         userLang = langSetting.value;
+      } else if (req.body && req.body.language && ['uz', 'ru', 'en'].includes(req.body.language)) {
+        userLang = req.body.language;
+        await supabase.from('app_settings').upsert({
+          key: 'user_lang:' + tidStr,
+          value: userLang,
+          updated_at: new Date().toISOString()
+        }).catch(() => {});
       }
     } catch (_) {}
 
@@ -690,6 +697,57 @@ app.post('/api/user/language', requireDatabase, requireTelegram, async (req, res
     console.error('Til sozlamasini saqlash xatosi:', error.message);
     return sendError(res, 500, 'Til sozlamasini saqlab bo‘lmadi.');
   }
+});
+
+let currencyCache = {
+  timestamp: 0,
+  rates: {
+    USD: { ccy: 'USD', rate: 12850, diff: 0, nameUz: 'AQSH dollari', nameRu: 'Доллар США', nameEn: 'US Dollar' },
+    EUR: { ccy: 'EUR', rate: 13950, diff: 0, nameUz: 'Yevro', nameRu: 'Евро', nameEn: 'Euro' },
+    RUB: { ccy: 'RUB', rate: 138, diff: 0, nameUz: 'Rossiya rubli', nameRu: 'Российский рубль', nameEn: 'Russian Ruble' },
+    KZT: { ccy: 'KZT', rate: 26, diff: 0, nameUz: 'Qozog‘iston tengesi', nameRu: 'Казахстанский тенге', nameEn: 'Kazakhstani Tenge' }
+  }
+};
+
+async function getLiveCurrencyRates() {
+  const now = Date.now();
+  if (now - currencyCache.timestamp < 30 * 60 * 1000 && Object.keys(currencyCache.rates).length >= 4) {
+    return currencyCache.rates;
+  }
+  try {
+    const response = await fetch('https://cbu.uz/uz/arkhiv-kursov-valyut/json/');
+    if (!response.ok) throw new Error('CBU API javob bermadi');
+    const data = await response.json();
+    if (Array.isArray(data)) {
+      const needed = ['USD', 'EUR', 'RUB', 'KZT'];
+      const map = {};
+      for (const item of data) {
+        if (needed.includes(item.Ccy)) {
+          map[item.Ccy] = {
+            ccy: item.Ccy,
+            rate: parseFloat(item.Rate) || 0,
+            diff: parseFloat(item.Diff) || 0,
+            date: item.Date,
+            nameUz: item.CcyNm_UZ,
+            nameRu: item.CcyNm_RU,
+            nameEn: item.CcyNm_EN
+          };
+        }
+      }
+      if (Object.keys(map).length > 0) {
+        currencyCache = { timestamp: now, rates: map };
+        return map;
+      }
+    }
+  } catch (err) {
+    console.error('Valyuta kurslarini olish xatosi:', err.message);
+  }
+  return currencyCache.rates;
+}
+
+app.get('/api/currency/rates', async (req, res) => {
+  const rates = await getLiveCurrencyRates();
+  return res.json({ ok: true, rates });
 });
 
 app.get('/api/plans', async (req, res) => {
